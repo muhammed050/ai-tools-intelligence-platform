@@ -25,7 +25,8 @@ export default function SignIn() {
     const { error } = await createClient().auth.signInWithPassword({ email: email.trim(), password })
     setLoading(false)
     if (error) { setError(messageFor(error.message)); return }
-    router.push(params.get('next')?.startsWith('/') ? params.get('next')! : '/dashboard')
+    const next = params.get('next')
+    router.push(next && next.startsWith('/') ? (next as never) : '/dashboard')
     router.refresh()
   }
 
