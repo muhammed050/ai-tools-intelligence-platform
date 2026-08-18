@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/browser'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -11,7 +11,7 @@ function messageFor(error: string) {
   return 'Unable to sign in. Please check your details and try again.'
 }
 
-export default function SignIn() {
+function SignInForm() {
   const router = useRouter()
   const params = useSearchParams()
   const [email, setEmail] = useState('')
@@ -26,7 +26,7 @@ export default function SignIn() {
     setLoading(false)
     if (error) { setError(messageFor(error.message)); return }
     const next = params.get('next')
-    router.push(next && next.startsWith('/') ? (next as never) : '/dashboard')
+    router.push(next && next.startsWith('/') ? next : '/dashboard')
     router.refresh()
   }
 
@@ -52,4 +52,8 @@ export default function SignIn() {
       <p className="muted" style={{ textAlign: 'center', marginTop: 22 }}>New here? <Link href="/auth/sign-up" style={{ color: '#9b8cff', fontWeight: 700 }}>Create an account</Link></p>
     </section>
   </main>
+}
+
+export default function SignIn() {
+  return <Suspense fallback={<main className="container" style={{ minHeight: 'calc(100vh - 68px)', display: 'grid', placeItems: 'center' }}><div className="card" style={{ padding: 32 }}>Loading sign in...</div></main>}><SignInForm /></Suspense>
 }
