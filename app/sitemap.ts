@@ -1,0 +1,3 @@
+import type { MetadataRoute } from 'next';
+import { createClient } from '@/lib/supabase/server';
+export default async function sitemap():Promise<MetadataRoute.Sitemap>{const db=await createClient();const base=process.env.NEXT_PUBLIC_SITE_URL||'https://ai-tools-intelligence-platform-iota.vercel.app';const {data}=await db.from('tools').select('slug,updated_at').eq('status','published');return [{url:base,lastModified:new Date(),changeFrequency:'daily',priority:1},{url:`${base}/ai-finder`,changeFrequency:'weekly',priority:.9},{url:`${base}/tools`,changeFrequency:'daily',priority:.8},...(data||[]).map(t=>({url:`${base}/tools/${t.slug}`,lastModified:t.updated_at?new Date(t.updated_at):new Date(),changeFrequency:'weekly' as const,priority:.7}))];}

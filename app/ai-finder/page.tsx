@@ -1,1 +1,18 @@
-export default function Page(){return <main className="container" style={{padding:"70px 0"}}><h1>AI Finder</h1><p className="muted">Database-backed production route.</p></main>}
+'use client';
+import { useState } from 'react';
+import Link from 'next/link';
+
+export default function Page(){
+ const [query,setQuery]=useState(''); const [loading,setLoading]=useState(false); const [data,setData]=useState<any>(null); const [error,setError]=useState('');
+ async function submit(e:React.FormEvent){e.preventDefault();setLoading(true);setError('');try{const r=await fetch('/api/ai-finder',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({query})});const j=await r.json();if(!r.ok)throw new Error(j.error);setData(j);}catch(e){setError(e instanceof Error?e.message:'Search failed');}finally{setLoading(false);}}
+ return <main className="container" style={{padding:'70px 0 100px'}}>
+  <section style={{textAlign:'center',maxWidth:900,margin:'0 auto'}}><div className="muted">AI-POWERED TOOL DISCOVERY</div><h1 style={{fontSize:'clamp(42px,7vw,72px)',lineHeight:1.02,margin:'16px 0'}}>Find the Right AI Tool<br/><span style={{color:'#8b7cff'}}>for Anything</span></h1><p className="muted" style={{fontSize:18}}>Describe the outcome you want. We extract your intent, search the live tool database and rank matches transparently.</p>
+   <form onSubmit={submit} className="card" style={{padding:10,display:'flex',gap:10,marginTop:28}}><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="I need a free AI tool to create 10-second cartoon TikTok videos without a watermark." minLength={3} required/><button className="btn btn-primary" disabled={loading}>{loading?'Finding…':'Find tools'}</button></form>
+   <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center',marginTop:14}}>{['Create TikTok videos','Generate product photos','Clone a voice','Build a website','Write SEO articles'].map(x=><button key={x} type="button" className="btn btn-secondary" onClick={()=>setQuery(x)}>{x}</button>)}</div>
+  </section>
+  {error&&<div className="card" style={{padding:18,marginTop:28,borderColor:'#7f1d1d'}}>{error}</div>}
+  {data&&<section style={{marginTop:45}}><div className="card" style={{padding:20}}><div className="muted">Detected intent · {data.source==='ai'?'AI extraction':'development fallback'}</div><div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}>{Object.entries(data.intent).flatMap(([k,v]:any)=>Array.isArray(v)?v.map((x:any)=><span className="btn btn-secondary" key={k+x}>{k}: {x}</span>):v?<span className="btn btn-secondary" key={k}>{k}: {v}</span>:[] )}</div></div>
+   {data.results.map((group:any)=><div key={group.key} style={{marginTop:32}}><h2>{group.label}</h2><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:16}}>{group.items.map((r:any)=><article className="card" style={{padding:22}} key={r.tool.id}><div style={{display:'flex',justifyContent:'space-between',gap:10}}><div><div className="muted">MATCH</div><h3 style={{fontSize:22,margin:'4px 0'}}>{r.tool.name}</h3></div><strong style={{fontSize:22}}>{r.score}%</strong></div><p className="muted">{r.tool.short_description}</p><ul>{r.why.map((x:string)=><li key={x}>✓ {x}</li>)}</ul>{r.limitations.length>0&&<p className="muted">Limitation: {r.limitations.join(', ')}</p>}<div style={{display:'flex',gap:8,marginTop:16}}><Link className="btn btn-primary" href={`/go/${r.tool.slug}`}>Try Tool</Link><Link className="btn btn-secondary" href={`/tools/${r.tool.slug}`}>View details</Link></div></article>)}</div></div>)}
+  </section>}
+ </main>
+}
