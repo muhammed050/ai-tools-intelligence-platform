@@ -3,16 +3,16 @@
 import { createClient } from '@/lib/supabase/browser'
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 function messageFor(error: string) {
   if (error.includes('Invalid login credentials')) return 'Invalid email or password.'
   if (error.includes('Email not confirmed')) return 'Please confirm your email before signing in.'
+  if (error.includes('authentication is not configured')) return 'Authentication is not configured on this deployment. Please contact the site administrator.'
   return 'Unable to sign in. Please check your details and try again.'
 }
 
 function SignInForm() {
-  const router = useRouter()
   const params = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,19 +22,24 @@ function SignInForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setError(''); setLoading(true)
-    const { error } = await createClient().auth.signInWithPassword({ email: email.trim(), password })
-    setLoading(false)
-    if (error) { setError(messageFor(error.message)); return }
-    const next = params.get('next')
-    if (next && next.startsWith('/')) window.location.assign(next)
-    else window.location.assign('/dashboard')
+    try {
+      const { error } = await createClient().auth.signInWithPassword({ email: email.trim(), password })
+      if (error) { setError(messageFor(error.message)); return }
+      const next = params.get('next')
+      window.location.assign(next && next.startsWith('/') ? next : '/dashboard')
+    } catch (err) {
+      setError(messageFor(err instanceof Error ? err.message : 'Authentication failed'))
+    } finally { setLoading(false) }
   }
 
   async function google() {
     setError(''); setGoogleLoading(true)
-    const redirectTo = `${window.location.origin}/auth/callback`
-    const { error } = await createClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
-    if (error) { setGoogleLoading(false); setError('Google login failed. Please try again.') }
+    try {
+      const { error } = await createClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })
+      if (error) setError(`Google login failed: ${error.message}`)
+    } catch (err) {
+      setError(`Google login failed: ${err instanceof Error ? err.message : 'Authentication is unavailable.'}`)
+    } finally { setGoogleLoading(false) }
   }
 
   return <main className="container" style={{ minHeight: 'calc(100vh - 68px)', display: 'grid', placeItems: 'center', padding: '48px 0' }}>
@@ -47,7 +52,7 @@ function SignInForm() {
         <label>Password<input value={password} onChange={e => setPassword(e.target.value)} type="password" autoComplete="current-password" required placeholder="••••••••" /></label>
         <div style={{ textAlign: 'right' }}><Link className="muted" href="/auth/forgot-password">Forgot password?</Link></div>
         {error && <p role="alert" style={{ color: '#fb7185', margin: 0 }}>{error}</p>}
-        <button className="btn btn-primary" disabled={loading || googleLoading} style={{ width: '100%' }}>{loading ? 'Signing in...' : 'Sign In'}</button>
+        <button type="submit" className="btn btn-primary" disabled={loading || googleLoading} style={{ width: '100%' }}>{loading ? 'Signing in...' : 'Sign In'}</button>
       </form>
       <p className="muted" style={{ textAlign: 'center', marginTop: 22 }}>New here? <Link href="/auth/sign-up" style={{ color: '#9b8cff', fontWeight: 700 }}>Create an account</Link></p>
     </section>
