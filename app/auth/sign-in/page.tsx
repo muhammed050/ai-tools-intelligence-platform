@@ -26,8 +26,8 @@ function SignInForm() {
     setLoading(false)
     if (error) { setError(messageFor(error.message)); return }
     const next = params.get('next')
-    router.push(next && next.startsWith('/') ? next : '/dashboard')
-    router.refresh()
+    if (next && next.startsWith('/')) window.location.assign(next)
+    else window.location.assign('/dashboard')
   }
 
   async function google() {
