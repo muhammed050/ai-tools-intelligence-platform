@@ -45,27 +45,21 @@ create index if not exists tools_search_trgm_idx on public.tools using gin((name
 create index if not exists tool_features_feature_idx on public.tool_features(feature_id,tool_id);
 create index if not exists pricing_plans_tool_active_idx on public.pricing_plans(tool_id,is_active);
 create index if not exists affiliate_clicks_tool_idx on public.affiliate_clicks(tool_id,created_at desc);
-
 create index if not exists tools_embedding_hnsw_idx on public.tools using hnsw (embedding vector_cosine_ops) where embedding is not null;
 
 create or replace function public.match_tools(query_embedding vector(1536), match_threshold float default 0.35, match_count int default 24)
-returns table(id uuid, similarity float)
-language sql stable as $$
- select t.id, 1 - (t.embedding <=> query_embedding) as similarity
- from public.tools t
+returns table(id uuid, similarity float) language sql stable as $$
+ select t.id, 1 - (t.embedding <=> query_embedding) as similarity from public.tools t
  where t.status='published' and t.embedding is not null and 1 - (t.embedding <=> query_embedding) >= match_threshold
- order by t.embedding <=> query_embedding
- limit match_count;
+ order by t.embedding <=> query_embedding limit match_count;
 $$;
 
 create or replace function public.search_tools(search_query text, match_count int default 24)
-returns table(id uuid, rank real)
-language sql stable as $$
+returns table(id uuid, rank real) language sql stable as $$
  select t.id, ts_rank_cd(to_tsvector('english', coalesce(t.name,'') || ' ' || coalesce(t.short_description,'') || ' ' || coalesce(t.description,'')), websearch_to_tsquery('english', search_query)) as rank
- from public.tools t
- where t.status='published' and to_tsvector('english', coalesce(t.name,'') || ' ' || coalesce(t.short_description,'') || ' ' || coalesce(t.description,'')) @@ websearch_to_tsquery('english', search_query)
- order by rank desc, t.rating desc nulls last
- limit match_count;
+ from public.tools t where t.status='published'
+ and to_tsvector('english', coalesce(t.name,'') || ' ' || coalesce(t.short_description,'') || ' ' || coalesce(t.description,'')) @@ websearch_to_tsquery('english', search_query)
+ order by rank desc, t.rating desc nulls last limit match_count;
 $$;
 
 alter table public.tool_snapshots enable row level security;
@@ -84,26 +78,26 @@ alter table public.collections enable row level security;
 alter table public.collection_tools enable row level security;
 alter table public.alerts enable row level security;
 
-create policy if not exists "published companies" on public.companies for select using(verified=true or exists(select 1 from public.tools t where t.company_id=companies.id and t.status='published'));
-create policy if not exists "public features" on public.features for select using(true);
-create policy if not exists "public tool features" on public.tool_features for select using(exists(select 1 from public.tools t where t.id=tool_features.tool_id and t.status='published'));
-create policy if not exists "public pricing plans" on public.pricing_plans for select using(exists(select 1 from public.tools t where t.id=pricing_plans.tool_id and t.status='published'));
-create policy if not exists "public collections" on public.collections for select using(status='published');
-create policy if not exists "public collection tools" on public.collection_tools for select using(exists(select 1 from public.collections c where c.id=collection_tools.collection_id and c.status='published'));
-create policy if not exists "own alerts" on public.alerts for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
-create policy if not exists "admin companies" on public.companies for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin features" on public.features for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin tool features" on public.tool_features for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin pricing" on public.pricing_plans for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin snapshots" on public.tool_snapshots for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin ai jobs" on public.ai_jobs for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin conversions" on public.conversions for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin affiliate programs" on public.affiliate_programs for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin affiliate links" on public.affiliate_links for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin affiliate clicks" on public.affiliate_clicks for all using(public.is_admin()) with check(public.is_admin());
-create policy if not exists "admin claims" on public.tool_claims for all using(public.is_admin() or auth.uid()=claimant_id) with check(public.is_admin() or auth.uid()=claimant_id);
-create policy if not exists "public updates" on public.tool_updates for select using(exists(select 1 from public.tools t where t.id=tool_updates.tool_id and t.status='published'));
-create policy if not exists "admin updates" on public.tool_updates for all using(public.is_admin()) with check(public.is_admin());
+create policy "published companies" on public.companies for select using(verified=true or exists(select 1 from public.tools t where t.company_id=companies.id and t.status='published'));
+create policy "public features" on public.features for select using(true);
+create policy "public tool features" on public.tool_features for select using(exists(select 1 from public.tools t where t.id=tool_features.tool_id and t.status='published'));
+create policy "public pricing plans" on public.pricing_plans for select using(exists(select 1 from public.tools t where t.id=pricing_plans.tool_id and t.status='published'));
+create policy "public collections" on public.collections for select using(status='published');
+create policy "public collection tools" on public.collection_tools for select using(exists(select 1 from public.collections c where c.id=collection_tools.collection_id and c.status='published'));
+create policy "own alerts" on public.alerts for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
+create policy "admin companies" on public.companies for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin features" on public.features for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin tool features" on public.tool_features for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin pricing" on public.pricing_plans for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin snapshots" on public.tool_snapshots for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin ai jobs" on public.ai_jobs for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin conversions" on public.conversions for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin affiliate programs" on public.affiliate_programs for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin affiliate links" on public.affiliate_links for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin affiliate clicks" on public.affiliate_clicks for all using(public.is_admin()) with check(public.is_admin());
+create policy "admin claims" on public.tool_claims for all using(public.is_admin() or auth.uid()=claimant_id) with check(public.is_admin() or auth.uid()=claimant_id);
+create policy "public updates" on public.tool_updates for select using(exists(select 1 from public.tools t where t.id=tool_updates.tool_id and t.status='published'));
+create policy "admin updates" on public.tool_updates for all using(public.is_admin()) with check(public.is_admin());
 
 create or replace function public.prevent_review_duplicates() returns trigger language plpgsql as $$
 begin
