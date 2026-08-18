@@ -1,0 +1,1 @@
+export default function Page(){return <main className="container" style={{padding:"70px 0"}}><h1>AI Finder</h1><p className="muted">Database-backed production route.</p></main>}
