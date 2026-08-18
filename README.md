@@ -1,67 +1,87 @@
 # AI Tools Intelligence Platform
 
-Production-oriented Next.js + Supabase directory for finding the right AI tool for a user's job.
+Production-ready Next.js + Supabase platform for discovering and comparing AI tools.
 
-## Stack
+## Authentication Setup
 
-- Next.js 16 + TypeScript
-- Supabase Auth, Postgres, RLS and pgvector
-- Tailwind CSS v4
-- Zod validation
-- OpenAI-compatible provider abstraction for intent extraction and embeddings
-- Vercel deployment target
+Authentication uses Supabase Auth and server-managed SSR cookies. There is no localStorage or custom authentication system.
 
-## Local setup
+### 1. Supabase
+
+Create or use a Supabase project and enable Email/Password under Authentication → Providers.
+
+Project URL for this deployment:
+`https://jranosrcpekjoxwpjvlk.supabase.co`
+
+### 2. Google OAuth
+
+In Google Cloud Console create an OAuth 2.0 Web Client. In Supabase Authentication → Providers → Google, configure the Google Client ID and Client Secret. Keep the client secret in Supabase only; never add it to a `NEXT_PUBLIC_*` variable.
+
+Add this Supabase callback URL to Google:
+`https://jranosrcpekjoxwpjvlk.supabase.co/auth/v1/callback`
+
+Set the Supabase Site URL to the production domain and add local/preview redirect URLs in Authentication → URL Configuration as needed.
+
+The application callback is `/auth/callback`; it exchanges the OAuth `code` with `exchangeCodeForSession()`.
+
+### 3. Environment variables
+
+Copy `.env.example` to `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://jranosrcpekjoxwpjvlk.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be exposed to browser code, committed to Git, or prefixed with `NEXT_PUBLIC_`.
+
+### 4. Database
+
+Apply migrations in order from `supabase/migrations/` using the Supabase CLI or SQL editor. The authentication migration creates the profile trigger, protected role management RPCs, tool ownership, and RLS policies.
+
+A new Auth user automatically receives a `profiles` row with role `user`. Google metadata (`name` / `full_name` and `avatar_url`) is copied when available. Users cannot assign themselves a role.
+
+### 5. Admin bootstrap
+
+After creating the first account, use the existing `supabase/admin-bootstrap.sql` with your intended administrator email. Review it before execution and do not expose service credentials in the browser.
+
+### 6. Local development
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run typecheck
 npm run build
-npm test
 npm run dev
 ```
 
-Run migrations in Supabase SQL Editor, in order:
+Authentication routes:
 
-1. `supabase/migrations/001_initial.sql`
-2. `supabase/migrations/002_production_intelligence.sql`
-3. `supabase/migrations/003_security_rls.sql`
+- `/auth/sign-in`
+- `/auth/sign-up`
+- `/auth/forgot-password`
+- `/auth/reset-password`
+- `/auth/callback`
 
-Then create a user at `/auth/sign-up` and run `supabase/admin-bootstrap.sql` after replacing the bootstrap email with your own admin email.
+Protected routes include `/dashboard/*` and role-protected `/admin/*`. Public AI tool discovery remains available without authentication.
 
-## Environment variables
+### 7. Vercel
 
-- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase publishable/anon key.
-- `NEXT_PUBLIC_SITE_URL` — canonical production URL.
-- `AI_PROVIDER_API_KEY` — server-only API key for the configured OpenAI-compatible provider.
-- `AI_PROVIDER_BASE_URL` — provider API base URL.
-- `AI_PROVIDER_MODEL` — structured-output model.
-- `EMBEDDING_MODEL` — embedding model. The production schema currently requires 1536 dimensions and the provider is called with `dimensions=1536`.
-- `EMBEDDING_DIMENSIONS` — documentation/configuration value; keep it at `1536` unless the database migration is changed to a matching vector dimension.
-- `CRON_SECRET` — optional secret for future scheduled monitoring endpoints.
+Add the four environment variables to Vercel for Preview and Production. Set `NEXT_PUBLIC_SITE_URL` to the appropriate site origin for each environment. Configure the corresponding Supabase Site URL and redirect allow-list for localhost, Vercel Preview, and the production domain.
 
-Never expose server-only keys with `NEXT_PUBLIC_` prefixes.
+### Security model
+
+- Supabase Auth owns sessions.
+- SSR cookies are refreshed through middleware.
+- Server-side role checks protect sensitive operations.
+- Supabase RLS protects profiles, favorites, reviews, tools, claims, and admin logs.
+- Role changes use a security-definer RPC that only an admin can execute.
+- Profile updates use a controlled RPC so users cannot change their own role.
+- The service-role key exists only in server-side code.
+- OAuth callback accepts only a code and exchanges it server-side.
+- User-facing errors are sanitized.
 
 ## AI Finder
 
-`/ai-finder` sends the natural-language request to a server route. With `AI_PROVIDER_API_KEY`, intent extraction is performed by the configured provider. Without a key, development uses an explicitly labeled deterministic parser. Search combines PostgreSQL full-text retrieval with pgvector similarity when embeddings are available, then applies deterministic recommendation scoring.
-
-Affiliate conversion weight remains neutral until first-party conversion data exists, preventing affiliate performance from silently controlling organic recommendations.
-
-## Tool ingestion and monitoring
-
-Public-page importing is limited to HTTP(S), checks a public robots policy before fetching, applies a size limit and never attempts CAPTCHA or authentication bypass. Extracted facts must be present in the source text. Health checks use ordinary public HTTP requests.
-
-## Vercel
-
-Import the repository into Vercel, configure the environment variables for Production/Preview as appropriate, and use the standard Next.js build command. The Next.js config intentionally contains no Turbopack-specific root setting.
-
-## Security
-
-Admin mutations use server-side `requireAdmin()` and Supabase RLS. Affiliate destinations and provider secrets are never sent to the browser. Anonymous search/click telemetry stores hashed session identifiers rather than raw IP addresses. Admin routes are not allowed in `robots.txt`.
-
-## Data integrity
-
-Ratings are derived from approved reviews by a database trigger. The platform does not manufacture ratings, reviews, pricing, features, revenue, conversion or visitor metrics. Empty metrics are represented as unavailable rather than fabricated.
+The public `/ai-finder` route uses the existing database-backed discovery architecture. Authentication is not required for basic tool discovery; sign-in is required for account features such as favorites and profile data.
