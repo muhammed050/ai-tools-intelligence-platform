@@ -1,2 +1,5 @@
 import type { MetadataRoute } from 'next'
-export default function manifest(): MetadataRoute.Manifest { return { name: 'AITools', short_name: 'AITools', description: 'Discover, compare and find AI tools for any task.', start_url: '/', display: 'standalone', background_color: '#07111f', theme_color: '#07111f', icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }] } }
+
+export default function manifest(): MetadataRoute.Manifest {
+  return { name: 'Eldevo — AI Tools Intelligence', short_name: 'Eldevo', description: 'Discover, compare and build better AI workflows.', start_url: '/', display: 'standalone', background_color: '#ffffff', theme_color: '#4f46e5', icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }] }
+}

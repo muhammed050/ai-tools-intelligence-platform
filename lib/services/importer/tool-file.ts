@@ -1,0 +1,59 @@
+import * as XLSX from 'xlsx'
+
+export const TOOL_IMPORT_MAX_BYTES = 5 * 1024 * 1024
+export const TOOL_IMPORT_MAX_ROWS = 1_000
+export const toolColumns = ['name', 'slug', 'description', 'tagline', 'website_url', 'logo_url', 'category', 'pricing_type', 'pricing_details', 'rating', 'review_count', 'verified', 'featured', 'platforms', 'features', 'use_cases', 'pros', 'cons', 'affiliate_url', 'affiliate_program', 'status', 'meta_title', 'meta_description', 'keywords'] as const
+
+type Row = Record<string, unknown>
+export type ImportRow = { row: number; input?: Record<string, unknown>; errors: string[]; warnings: string[] }
+const pricingTypes = new Set(['free', 'freemium', 'paid', 'free_trial', 'contact_sales'])
+const statuses = new Set(['draft', 'published', 'archived'])
+const formulaPrefix = /^[=+\-@]/
+
+function text(value: unknown, max: number) {
+  if (value === null || value === undefined) return ''
+  return String(value).replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, max)
+}
+function array(value: unknown) { return text(value, 2_000).split(/[|,]/).map((item) => item.trim()).filter(Boolean).slice(0, 30) }
+function boolean(value: unknown, errors: string[], field: string) { const normal = text(value, 12).toLowerCase(); if (!normal) return false; if (['true', '1', 'yes'].includes(normal)) return true; if (['false', '0', 'no'].includes(normal)) return false; errors.push(`${field} must be true or false`); return false }
+function url(value: unknown, errors: string[], field: string, required = false) { const normal = text(value, 2_048); if (!normal) { if (required) errors.push(`${field} is required`); return null } try { const parsed = new URL(normal); if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(); return parsed.toString() } catch { errors.push(`${field} must be an http(s) URL`); return null } }
+
+export function parseToolFile(fileName: string, bytes: ArrayBuffer): Row[] {
+  const lower = fileName.toLowerCase()
+  if (lower.endsWith('.json')) { const parsed = JSON.parse(new TextDecoder().decode(bytes)); if (!Array.isArray(parsed)) throw new Error('JSON must contain an array of tool rows'); return parsed as Row[] }
+  if (!lower.endsWith('.csv') && !lower.endsWith('.xlsx')) throw new Error('Upload a CSV, XLSX, or JSON file')
+  const workbook = XLSX.read(bytes, { type: 'array', raw: false, cellFormula: false, cellHTML: false })
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  if (!sheet) throw new Error('The file has no worksheet')
+  return XLSX.utils.sheet_to_json<Row>(sheet, { defval: '' })
+}
+
+export function validateImportRows(rows: Row[], categories: Map<string, string>, existingSlugs: Set<string>, existingWebsites: Set<string>): ImportRow[] {
+  if (rows.length > TOOL_IMPORT_MAX_ROWS) throw new Error(`A file can contain at most ${TOOL_IMPORT_MAX_ROWS} rows`)
+  const seenSlugs = new Set<string>()
+  const seenWebsites = new Set<string>()
+  return rows.map((row, index) => {
+    const errors: string[] = []; const warnings: string[] = []
+    const name = text(row.name, 120); const slug = text(row.slug, 120).toLowerCase(); const description = text(row.description, 10_000); const tagline = text(row.tagline, 280)
+    const website_url = url(row.website_url, errors, 'website_url', true); const logo_url = url(row.logo_url, errors, 'logo_url'); const categoryName = text(row.category, 120).toLowerCase()
+    if (name.length < 2) errors.push('name must be at least 2 characters')
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) errors.push('slug must use lowercase letters, numbers, and hyphens')
+    if (description.length < 20) errors.push('description must be at least 20 characters')
+    if (tagline.length < 10) errors.push('tagline must be at least 10 characters')
+    if (!categories.has(categoryName)) errors.push('category does not exist')
+    const pricing_type = text(row.pricing_type || 'freemium', 32).toLowerCase()
+    if (!pricingTypes.has(pricing_type)) errors.push('pricing_type is invalid')
+    const status = text(row.status || 'draft', 32).toLowerCase()
+    if (!statuses.has(status)) errors.push('status is invalid')
+    const ratingValue = text(row.rating, 20); const rating = ratingValue ? Number(ratingValue) : null
+    if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 5)) errors.push('rating must be between 0 and 5')
+    if (existingSlugs.has(slug) || seenSlugs.has(slug)) errors.push('duplicate slug')
+    if (website_url && (existingWebsites.has(website_url) || seenWebsites.has(website_url))) errors.push('duplicate website_url')
+    if (slug) seenSlugs.add(slug); if (website_url) seenWebsites.add(website_url)
+    for (const [key, value] of Object.entries(row)) if (formulaPrefix.test(String(value).trim())) warnings.push(`${key} started with a spreadsheet formula marker and was treated as text`)
+    const input = errors.length ? undefined : { name, slug, description, short_description: tagline, website_url, logo_url, category_id: categories.get(categoryName), pricing_type, status, verified: boolean(row.verified, errors, 'verified'), featured: boolean(row.featured, errors, 'featured'), rating, review_count: Number(text(row.review_count, 12) || 0), use_cases: array(row.use_cases), platforms: array(row.platforms), pros: array(row.pros), cons: array(row.cons), currency: 'USD', starting_price: null }
+    return { row: index + 2, input, errors, warnings }
+  })
+}
+
+export function escapeSpreadsheet(value: unknown) { const normal = value === null || value === undefined ? '' : String(value); return formulaPrefix.test(normal) ? `'${normal}` : normal }

@@ -1,2 +1,7 @@
 import type { MetadataRoute } from 'next'
-export default function robots(): MetadataRoute.Robots { const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-tools-intelligence-platform-iota.vercel.app'; return { rules: [{ userAgent: '*', allow: '/', disallow: ['/admin/', '/dashboard/', '/api/', '/auth/', '/favorites', '/favorites/'] }], sitemap: `${base}/sitemap.xml` } }
+import { getSiteUrl } from '@/lib/site'
+
+export default function robots(): MetadataRoute.Robots {
+  const base = getSiteUrl()
+  return { rules: [{ userAgent: '*', allow: '/', disallow: ['/admin/', '/dashboard/', '/api/', '/auth/', '/favorites', '/collections/'] }], sitemap: `${base}/sitemap.xml`, host: base }
+}

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { FavoriteButton } from '@/components/favorite-button'
 import { ReviewForm } from '@/components/review-form'
 import { AddToCollectionButton } from '@/components/add-to-collection-button'
+import { getSiteUrl } from '@/lib/site'
 
 type Tool = { id: string; name: string; slug: string; description: string; short_description: string; website_url: string; logo_url: string | null; pricing_type: string | null; starting_price: number | null; currency: string | null; rating: number | null; review_count: number; verified: boolean; health_score: number | null; last_verified_at: string | null; use_cases: string[]; platforms: string[]; pros: string[]; cons: string[]; source_url: string | null; category: { id: string; name: string; slug: string } | null; features: { name: string; slug: string }[]; pricing_plans: { name: string; price: number | null; currency: string; billing_period: string | null; is_free: boolean; features: unknown }[] }
 type Review = { id: string; rating: number; title: string; body: string; pros: string[]; cons: string[]; created_at: string }
@@ -35,7 +36,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
   const result = await getTool((await params).slug)
   if (!result) notFound()
   const { tool, related, reviews } = result
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-tools-intelligence-platform-iota.vercel.app'
+  const siteUrl = getSiteUrl()
   const breadcrumb = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'AI Tools', item: `${siteUrl}/tools` }, ...(tool.category ? [{ '@type': 'ListItem', position: 2, name: tool.category.name, item: `${siteUrl}/categories/${tool.category.slug}` }] : []), { '@type': 'ListItem', position: tool.category ? 3 : 2, name: tool.name, item: `${siteUrl}/tools/${tool.slug}` }] }
   const application: Record<string, unknown> = { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: tool.name, description: tool.short_description, applicationCategory: tool.category?.name || 'AI software', operatingSystem: tool.platforms.length ? tool.platforms.join(', ') : 'Web', url: `${siteUrl}/tools/${tool.slug}`, offers: tool.starting_price !== null ? { '@type': 'Offer', price: tool.starting_price, priceCurrency: tool.currency || 'USD' } : undefined }
   if (tool.rating !== null && tool.review_count > 0) application.aggregateRating = { '@type': 'AggregateRating', ratingValue: tool.rating, ratingCount: tool.review_count, bestRating: 5, worstRating: 1 }
