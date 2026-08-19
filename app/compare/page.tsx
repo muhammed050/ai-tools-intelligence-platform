@@ -1,1 +1,4 @@
-export default function Page(){return <main className="container" style={{padding:"70px 0"}}><h1>Compare</h1><p className="muted">Database-backed production route.</p></main>}
+import Link from 'next/link'
+import { ArrowRight, GitCompareArrows } from 'lucide-react'
+export const metadata={title:'Compare AI Tools',description:'Compare AI tools by pricing, ratings, capabilities and best use cases.'}
+export default function Compare(){return <main className="container" style={{padding:'70px 0 100px'}}><div className="card" style={{padding:'48px',textAlign:'center',maxWidth:850,margin:'0 auto'}}><div className="tool-logo" style={{margin:'0 auto 18px'}}><GitCompareArrows size={23}/></div><div className="eyebrow">Make a better choice</div><h1 style={{fontSize:46,letterSpacing:'-.045em',margin:'8px 0'}}>Compare AI tools</h1><p className="muted" style={{fontSize:17,maxWidth:620,margin:'0 auto 24px'}}>Choose tools from the directory and compare features, pricing, ratings and strengths side by side.</p><Link className="btn btn-primary" href="/tools">Choose tools <ArrowRight size={16}/></Link></div></main>}
