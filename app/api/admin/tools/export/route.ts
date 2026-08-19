@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { requireAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { escapeSpreadsheet } from '@/lib/services/importer/tool-file'
@@ -13,8 +13,8 @@ export async function GET(request: Request) {
     const { data, error } = await query; if (error) throw error
     const rows = (data ?? []).map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, Array.isArray(value) ? value.join(' | ') : escapeSpreadsheet(value)])))
     if (format === 'json') return new NextResponse(JSON.stringify(rows, null, 2), { headers: { 'content-type': 'application/json', 'content-disposition': 'attachment; filename="eldevo-tools.json"' } })
-    const sheet = XLSX.utils.json_to_sheet(rows); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, sheet, 'Tools')
-    const output = XLSX.write(workbook, { type: 'buffer', bookType: format === 'xlsx' ? 'xlsx' : 'csv' })
+    const workbook = new ExcelJS.Workbook(); const sheet = workbook.addWorksheet('Tools'); sheet.columns = Object.keys(rows[0] ?? { name: 'name' }).map((key) => ({ header: key, key })); rows.forEach((row) => sheet.addRow(row))
+    const output = format === 'xlsx' ? await workbook.xlsx.writeBuffer() : Buffer.from(await workbook.csv.writeBuffer())
     return new NextResponse(output, { headers: { 'content-type': format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="eldevo-tools.${format}"` } })
   } catch (error) { console.error('Tools export failed', error); return NextResponse.json({ error: 'Unable to export tools' }, { status: 500 }) }
 }

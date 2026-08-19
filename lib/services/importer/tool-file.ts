@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
+import JSZip from 'jszip'
 
 export const TOOL_IMPORT_MAX_BYTES = 5 * 1024 * 1024
 export const TOOL_IMPORT_MAX_ROWS = 1_000
@@ -15,17 +16,46 @@ function text(value: unknown, max: number) {
   return String(value).replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, max)
 }
 function array(value: unknown) { return text(value, 2_000).split(/[|,]/).map((item) => item.trim()).filter(Boolean).slice(0, 30) }
+function parseCsv(input: string): string[][] {
+  const rows: string[][] = []; let row: string[] = []; let cell = ''; let quoted = false
+  for (let index = 0; index < input.length; index++) { const char = input[index]; const next = input[index + 1]; if (char === '"' && quoted && next === '"') { cell += '"'; index++; continue } if (char === '"') { quoted = !quoted; continue } if (char === ',' && !quoted) { row.push(cell); cell = ''; continue } if ((char === '\n' || char === '\r') && !quoted) { if (char === '\r' && next === '\n') index++; row.push(cell); if (row.some(Boolean)) rows.push(row); row = []; cell = ''; continue } cell += char }
+  row.push(cell); if (row.some(Boolean)) rows.push(row); return rows
+}
 function boolean(value: unknown, errors: string[], field: string) { const normal = text(value, 12).toLowerCase(); if (!normal) return false; if (['true', '1', 'yes'].includes(normal)) return true; if (['false', '0', 'no'].includes(normal)) return false; errors.push(`${field} must be true or false`); return false }
 function url(value: unknown, errors: string[], field: string, required = false) { const normal = text(value, 2_048); if (!normal) { if (required) errors.push(`${field} is required`); return null } try { const parsed = new URL(normal); if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(); return parsed.toString() } catch { errors.push(`${field} must be an http(s) URL`); return null } }
 
-export function parseToolFile(fileName: string, bytes: ArrayBuffer): Row[] {
+const MAX_XLSX_UNCOMPRESSED_BYTES = 12 * 1024 * 1024
+const allowedMimeTypes = new Set(['text/csv', 'application/json', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/octet-stream'])
+
+export function isAllowedImportFile(fileName: string, mimeType: string) {
+  return allowedMimeTypes.has(mimeType) && /\.(csv|xlsx|json)$/i.test(fileName)
+}
+
+export async function parseToolFile(fileName: string, bytes: ArrayBuffer): Promise<Row[]> {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.json')) { const parsed = JSON.parse(new TextDecoder().decode(bytes)); if (!Array.isArray(parsed)) throw new Error('JSON must contain an array of tool rows'); return parsed as Row[] }
   if (!lower.endsWith('.csv') && !lower.endsWith('.xlsx')) throw new Error('Upload a CSV, XLSX, or JSON file')
-  const workbook = XLSX.read(bytes, { type: 'array', raw: false, cellFormula: false, cellHTML: false })
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  const buffer = Buffer.from(bytes)
+  if (lower.endsWith('.xlsx')) {
+    const archive = await JSZip.loadAsync(new Uint8Array(bytes), { createFolders: false })
+    const entries = Object.values(archive.files)
+    const totalUncompressed = entries.reduce((total, entry) => total + (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize!, 0)
+    if (entries.length > 200 || !Number.isFinite(totalUncompressed) || totalUncompressed > MAX_XLSX_UNCOMPRESSED_BYTES) throw new Error('Spreadsheet archive is too complex to import')
+  }
+  if (lower.endsWith('.csv')) {
+    const csv = parseCsv(new TextDecoder().decode(bytes)); const [headers = [], ...data] = csv
+    if (!headers.length || headers.some((header) => !text(header, 100))) throw new Error('The first row must contain column names')
+    return data.map((cells) => Object.fromEntries(headers.map((header, index) => [text(header, 100).toLowerCase(), cells[index] ?? ''])))
+  }
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.load(buffer as never)
+  const sheet = workbook.worksheets[0]
   if (!sheet) throw new Error('The file has no worksheet')
-  return XLSX.utils.sheet_to_json<Row>(sheet, { defval: '' })
+  const headers = (sheet.getRow(1).values as unknown[]).slice(1).map((value) => text(value, 100).toLowerCase())
+  if (!headers.length || headers.some((header) => !header)) throw new Error('The first row must contain column names')
+  const rows: Row[] = []
+  sheet.eachRow((row, rowNumber) => { if (rowNumber > 1 && rows.length <= TOOL_IMPORT_MAX_ROWS) { const output: Row = {}; headers.forEach((header, index) => { output[header] = row.getCell(index + 1).text }); rows.push(output) } })
+  return rows
 }
 
 export function validateImportRows(rows: Row[], categories: Map<string, string>, existingSlugs: Set<string>, existingWebsites: Set<string>): ImportRow[] {

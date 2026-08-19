@@ -6,6 +6,11 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 function messageFor(error: string) {
+  if (error === 'access_denied') return 'Google sign-in was cancelled. You can try again or use email sign-in.'
+  if (error === 'invalid_request') return 'Google sign-in is not configured correctly. Please contact the site administrator.'
+  if (error === 'missing_code') return 'The sign-in response was incomplete. Please start Google sign-in again.'
+  if (error === 'exchange_failed') return 'We could not finish Google sign-in. Please try again.'
+  if (error === 'session_missing') return 'Google sign-in completed without a session. Please try again.'
   if (error.includes('Invalid login credentials')) return 'Invalid email or password.'
   if (error.includes('Email not confirmed')) return 'Please confirm your email before signing in.'
   if (error.includes('authentication is not configured')) return 'Authentication is not configured on this deployment. Please contact the site administrator.'
@@ -16,7 +21,7 @@ function SignInForm() {
   const params = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() => params.get('error') ? messageFor(params.get('error')!) : '')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 

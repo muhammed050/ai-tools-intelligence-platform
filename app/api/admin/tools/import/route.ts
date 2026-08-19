@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { requireAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { importPublicTool } from '@/lib/services/importer/public-page'
-import { parseToolFile, TOOL_IMPORT_MAX_BYTES, validateImportRows } from '@/lib/services/importer/tool-file'
+import { isAllowedImportFile, parseToolFile, TOOL_IMPORT_MAX_BYTES, validateImportRows } from '@/lib/services/importer/tool-file'
 
 const schema = z.object({ url: z.string().url() })
 
@@ -14,7 +14,8 @@ export async function POST(request: Request) {
       const form = await request.formData(); const file = form.get('file'); const mode = form.get('mode') === 'import' ? 'import' : 'validate'
       if (!(file instanceof File)) return NextResponse.json({ error: 'A file is required' }, { status: 400 })
       if (file.size === 0 || file.size > TOOL_IMPORT_MAX_BYTES) return NextResponse.json({ error: 'File must be smaller than 5 MB' }, { status: 400 })
-      const db = await createClient(); const rows = parseToolFile(file.name, await file.arrayBuffer())
+      if (!isAllowedImportFile(file.name, file.type || 'application/octet-stream')) return NextResponse.json({ error: 'Upload a CSV, XLSX, or JSON file' }, { status: 400 })
+      const db = await createClient(); const rows = await parseToolFile(file.name, await file.arrayBuffer())
       const [categoriesResult, toolsResult] = await Promise.all([db.from('categories').select('id,name'), db.from('tools').select('slug,website_url')])
       const categories = new Map((categoriesResult.data ?? []).map((category) => [category.name.toLowerCase(), category.id]))
       const validated = validateImportRows(rows, categories, new Set((toolsResult.data ?? []).map((tool) => tool.slug)), new Set((toolsResult.data ?? []).map((tool) => tool.website_url)))
