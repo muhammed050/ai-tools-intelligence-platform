@@ -16,11 +16,13 @@ test('OAuth callback exchanges the authorization code server-side', async () => 
   assert.match(source, /searchParams\.get\('code'\)/)
 })
 
-test('protected routes are covered by middleware', async () => {
+test('protected routes are covered by the shared middleware', async () => {
   const source = await readFile('middleware.ts', 'utf8')
-  assert.match(source, /dashboard/)
-  assert.match(source, /admin/)
-  assert.match(source, /auth\/sign-in/)
+  const shared = await readFile('lib/supabase/middleware.ts', 'utf8')
+  assert.match(source, /updateSession/)
+  assert.match(shared, /dashboard/)
+  assert.match(shared, /admin/)
+  assert.match(shared, /auth\/sign-in/)
 })
 
 test('role management is server-side and blocks self escalation', async () => {
@@ -28,4 +30,12 @@ test('role management is server-side and blocks self escalation', async () => {
   assert.match(source, /is_admin\(\)/)
   assert.match(source, /SELF_ROLE_CHANGE_NOT_ALLOWED/)
   assert.match(source, /grant execute on function public\.set_user_role/)
+})
+
+test('production hardening adds the profile column, strict admin role and requested bootstrap email', async () => {
+  const source = await readFile('supabase/migrations/004_production_hardening.sql', 'utf8')
+  assert.match(source, /add column if not exists full_name text/)
+  assert.match(source, /role='admin'/)
+  assert.match(source, /dakarlem050@gmail\.com/)
+  assert.match(source, /consume_rate_limit/)
 })
