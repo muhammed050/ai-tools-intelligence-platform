@@ -18,10 +18,10 @@ export default function SignUp() {
     setLoading(true)
     try {
       const { data, error } = await createClient().auth.signUp({ email: form.email.trim(), password: form.password, options: { data: { full_name: form.fullName.trim() }, emailRedirectTo: `${window.location.origin}/auth/callback` } })
-      if (error) { setError(error.message.includes('already registered') ? 'Email already exists. Try signing in.' : error.message); return }
+      if (error) { setError(error.message.includes('already registered') ? 'Email already exists. Try signing in.' : 'Unable to create your account. Please check your details and try again.'); return }
       if (data.session) window.location.assign('/dashboard')
       else setSuccess('Account created. Check your email to confirm your address.')
-    } catch (err) { setError(err instanceof Error ? err.message : 'Unable to create your account.') }
+    } catch (err) { console.error('Account creation failed', err); setError('Unable to create your account. Please try again.') }
     finally { setLoading(false) }
   }
 
@@ -29,8 +29,8 @@ export default function SignUp() {
     setError(''); setGoogleLoading(true)
     try {
       const { error } = await createClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })
-      if (error) setError(`Google login failed: ${error.message}`)
-    } catch (err) { setError(`Google login failed: ${err instanceof Error ? err.message : 'Authentication is unavailable.'}`) }
+      if (error) setError('Google sign-up is unavailable right now. Please try email sign-up.')
+    } catch (err) { console.error('Google sign-up failed', err); setError('Google sign-up is unavailable right now. Please try email sign-up.') }
     finally { setGoogleLoading(false) }
   }
 

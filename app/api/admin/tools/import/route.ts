@@ -1,1 +1,22 @@
-import {NextResponse} from 'next/server';import {z} from 'zod';import {requireAdmin} from '@/lib/auth';import {createClient} from '@/lib/supabase/server';import {importPublicTool} from '@/lib/services/importer/public-page';const schema=z.object({url:z.string().url()});export async function POST(req:Request){try{const {user}=await requireAdmin();const {url}=schema.parse(await req.json());const db=await createClient();const result=await importPublicTool(url);const {data:job}=await db.from('ai_jobs').insert({type:'public_tool_import',status:'completed',input:{source_url:url},output:result,created_by:user.id,started_at:new Date().toISOString(),completed_at:new Date().toISOString()}).select('id').single();return NextResponse.json({...result,review_job_id:job?.id??null});}catch(e){if(e instanceof z.ZodError)return NextResponse.json({error:'Invalid URL'},{status:400});return NextResponse.json({error:e instanceof Error?e.message:'Import failed'},{status:400});}}
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { requireAdmin } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
+import { importPublicTool } from '@/lib/services/importer/public-page'
+
+const schema = z.object({ url: z.string().url() })
+
+export async function POST(request: Request) {
+  try {
+    const { user } = await requireAdmin()
+    const { url } = schema.parse(await request.json())
+    const db = await createClient()
+    const result = await importPublicTool(url)
+    const { data: job } = await db.from('ai_jobs').insert({ type: 'public_tool_import', status: 'completed', input: { source_url: url }, output: result, created_by: user.id, started_at: new Date().toISOString(), completed_at: new Date().toISOString() }).select('id').single()
+    return NextResponse.json({ ...result, review_job_id: job?.id ?? null })
+  } catch (error) {
+    if (error instanceof z.ZodError) return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
+    console.error('Public tool import failed', error)
+    return NextResponse.json({ error: 'Unable to inspect that public page.' }, { status: 400 })
+  }
+}

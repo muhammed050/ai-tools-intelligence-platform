@@ -5,11 +5,16 @@ import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 
 async function getCategory(slug: string) {
-  const db = await createClient()
-  const { data } = await db.from('categories').select('id,name,slug,description,seo_title,seo_description').eq('slug', slug).maybeSingle()
-  if (!data) return null
-  const { data: tools } = await db.from('tools').select('id,name,slug,short_description,rating,review_count,pricing_type,logo_url,verified').eq('category_id', data.id).eq('status', 'published').order('featured', { ascending: false }).order('rating', { ascending: false, nullsFirst: false }).limit(24)
-  return { category: data, tools: tools || [] }
+  try {
+    const db = await createClient()
+    const { data } = await db.from('categories').select('id,name,slug,description,seo_title,seo_description').eq('slug', slug).maybeSingle()
+    if (!data) return null
+    const { data: tools } = await db.from('tools').select('id,name,slug,short_description,rating,review_count,pricing_type,logo_url,verified').eq('category_id', data.id).eq('status', 'published').order('featured', { ascending: false }).order('rating', { ascending: false, nullsFirst: false }).limit(24)
+    return { category: data, tools: tools || [] }
+  } catch (error) {
+    console.error('Category lookup failed', error)
+    return null
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

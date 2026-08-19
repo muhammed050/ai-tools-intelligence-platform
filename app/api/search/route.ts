@@ -4,11 +4,16 @@ import { createClient } from '@/lib/supabase/server'
 
 const querySchema = z.string().trim().min(2).max(80)
 
+function sanitizeSearchQuery(value: string) {
+  return value.replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get('q') || ''
   const parsed = querySchema.safeParse(raw)
   if (!parsed.success) return NextResponse.json({ tools: [], categories: [], articles: [] })
-  const query = parsed.data
+  const query = sanitizeSearchQuery(parsed.data)
+  if (query.length < 2) return NextResponse.json({ tools: [], categories: [], articles: [] })
   try {
     const db = await createClient()
     const [tools, categories, articles] = await Promise.all([

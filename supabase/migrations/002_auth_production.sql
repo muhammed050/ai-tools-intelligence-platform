@@ -1,5 +1,6 @@
 -- Authentication hardening and role-aware ownership.
 alter table public.tools add column if not exists owner_id uuid references auth.users(id) on delete set null;
+alter table public.profiles add column if not exists full_name text;
 create index if not exists tools_owner_idx on public.tools(owner_id);
 create or replace function public.is_admin() returns boolean language sql stable security definer set search_path=public as $$ select exists(select 1 from public.profiles where id=auth.uid() and role='admin'); $$;
 create or replace function public.is_editor_or_admin() returns boolean language sql stable security definer set search_path=public as $$ select exists(select 1 from public.profiles where id=auth.uid() and role in('admin','editor')); $$;

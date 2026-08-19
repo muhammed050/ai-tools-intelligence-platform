@@ -9,5 +9,6 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) return NextResponse.redirect(new URL('/auth/sign-in?error=oauth_failed', request.url))
   const next = requestUrl.searchParams.get('next')
-  return NextResponse.redirect(new URL(next?.startsWith('/') ? next : '/dashboard', request.url))
+  const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
+  return NextResponse.redirect(new URL(safeNext, request.url))
 }

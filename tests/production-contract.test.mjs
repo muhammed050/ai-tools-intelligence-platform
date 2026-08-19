@@ -7,5 +7,5 @@ test('recommendation weights are transparent and sum to 1',()=>{const s=read('li
 test('AI finder has explicit development fallback',()=>{const s=read('lib/services/ai-finder/intent.ts');assert.match(s,/development-fallback/);assert.match(s,/deterministicFallbackParser/);});
 test('AI finder rate limits anonymous and authenticated requests before AI work',()=>{const s=read('app/api/ai-finder/route.ts');assert.match(s,/consume_rate_limit/);assert.match(s,/p_limit:limit/);assert.match(s,/status:429/);assert.match(s,/extractIntent\(body\.query\)/);});
 test('hybrid search uses both database retrieval paths',()=>{const s=read('lib/services/search/hybrid-search.ts');assert.match(s,/search_tools/);assert.match(s,/match_tools/);});
-test('database exposes vector and full text RPCs',()=>{const s=read('supabase/migrations/002_production_intelligence.sql');assert.match(s,/match_tools/);assert.match(s,/search_tools/);assert.match(s,/vector_cosine_ops/);});
+test('database exposes vector and full text RPCs',()=>{const s=read('supabase/migrations/006_production_intelligence.sql');assert.match(s,/match_tools/);assert.match(s,/search_tools/);assert.match(s,/vector_cosine_ops/);});
 test('secrets are excluded from git',()=>{const s=read('.gitignore');assert.match(s,/\.env\*/);});

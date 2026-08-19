@@ -10,7 +10,8 @@ function flatten(row:any):ToolRecord {
 
 export async function hybridSearch(query:string, intent:{category?:string;features?:string[];budget?:string}, limit=24) {
   const db=await createClient();
-  const keyword=await db.rpc('search_tools',{search_query:query,match_count:Math.max(limit*2,24)});
+  const safeQuery=query.replace(/[^\p{L}\p{N}\s-]/gu,' ').replace(/\s+/g,' ').trim();
+  const keyword=await db.rpc('search_tools',{search_query:safeQuery,match_count:Math.max(limit*2,24)});
   const keywordRows=(keyword.data||[]) as {id:string;rank:number}[];
   let semanticRows:{id:string;similarity:number}[]=[];
   const provider=getAIProvider();
@@ -19,7 +20,7 @@ export async function hybridSearch(query:string, intent:{category?:string;featur
   }
   const ids=[...new Set([...keywordRows.map(x=>x.id),...semanticRows.map(x=>x.id)])].slice(0,limit*3);
   if(!ids.length){
-    const terms=query.replace(/[,%()]/g,' ').split(/\s+/).filter(x=>x.length>2).slice(0,8);
+    const terms=safeQuery.split(/\s+/).filter(x=>x.length>2).slice(0,8);
     if(!terms.length) return [] as {tool:ToolRecord;semanticScore:number;keywordScore:number}[];
     const fallbackFilter=terms.flatMap(term=>[`name.ilike.%${term}%`,`short_description.ilike.%${term}%`,`description.ilike.%${term}%`]).join(',');
     const fallback=await db.from('tools').select(select).eq('status','published').or(fallbackFilter).order('rating',{ascending:false,nullsFirst:false}).limit(limit);

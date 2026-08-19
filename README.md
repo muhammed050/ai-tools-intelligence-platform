@@ -33,10 +33,17 @@ SUPABASE_SERVICE_ROLE_KEY=...
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-For Vercel Production, set all four variables for **Production** (and Preview/Development as appropriate). The production site URL is currently:
+For Vercel Production, set every variable below for **Production** (and Preview/Development as appropriate). Keep only the two `NEXT_PUBLIC_*` variables and `NEXT_PUBLIC_SITE_URL` exposed to browser-safe configuration. The production site URL is currently:
 
 ```env
 NEXT_PUBLIC_SITE_URL=https://ai-tools-intelligence-platform-iota.vercel.app
+
+# Server-only secrets and provider configuration
+SUPABASE_SERVICE_ROLE_KEY=...
+AI_PROVIDER_API_KEY=...
+AI_PROVIDER_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_MODEL=gpt-5-mini
+EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be exposed to browser code, committed to Git, or prefixed with `NEXT_PUBLIC_`.

@@ -16,9 +16,10 @@ test('OAuth callback exchanges the authorization code server-side', async () => 
   assert.match(source, /searchParams\.get\('code'\)/)
 })
 
-test('protected routes are covered by the shared middleware', async () => {
-  const source = await readFile('middleware.ts', 'utf8')
+test('protected routes are covered by the shared proxy', async () => {
+  const source = await readFile('proxy.ts', 'utf8')
   const shared = await readFile('lib/supabase/middleware.ts', 'utf8')
+  assert.match(source, /proxy\(/)
   assert.match(source, /updateSession/)
   assert.match(shared, /dashboard/)
   assert.match(shared, /admin/)

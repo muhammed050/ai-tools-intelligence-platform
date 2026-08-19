@@ -26,7 +26,8 @@ function SignInForm() {
       const { error } = await createClient().auth.signInWithPassword({ email: email.trim(), password })
       if (error) { setError(messageFor(error.message)); return }
       const next = params.get('next')
-      window.location.assign(next && next.startsWith('/') ? next : '/dashboard')
+      const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
+      window.location.assign(safeNext)
     } catch (err) {
       setError(messageFor(err instanceof Error ? err.message : 'Authentication failed'))
     } finally { setLoading(false) }
@@ -36,9 +37,10 @@ function SignInForm() {
     setError(''); setGoogleLoading(true)
     try {
       const { error } = await createClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })
-      if (error) setError(`Google login failed: ${error.message}`)
+      if (error) setError('Google sign-in is unavailable right now. Please try email sign-in.')
     } catch (err) {
-      setError(`Google login failed: ${err instanceof Error ? err.message : 'Authentication is unavailable.'}`)
+      console.error('Google sign-in failed', err)
+      setError('Google sign-in is unavailable right now. Please try email sign-in.')
     } finally { setGoogleLoading(false) }
   }
 

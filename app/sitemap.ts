@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 const fallbackArticles = ['how-to-choose-the-right-ai-tool', 'best-ai-tools-for-content-creation', 'ai-tool-stack-for-developers']
-const staticPaths = ['', '/ai-finder', '/tools', '/categories', '/compare', '/blog', '/about', '/contact', '/privacy', '/terms', '/submit-tool']
+const staticPaths = ['', '/ai-finder', '/tools', '/categories', '/compare', '/blog', '/about', '/contact', '/privacy', '/terms', '/submit-tool', '/best-ai-video-tools', '/best-free-ai-video-tools']
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-tools-intelligence-platform-iota.vercel.app'

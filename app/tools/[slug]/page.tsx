@@ -12,15 +12,21 @@ type Tool = { id: string; name: string; slug: string; description: string; short
 type Review = { id: string; rating: number; title: string; body: string; pros: string[]; cons: string[]; created_at: string }
 
 async function getTool(slug: string) {
-  const db = await createClient()
-  const { data } = await db.from('tools').select('id,name,slug,description,short_description,website_url,logo_url,pricing_type,starting_price,currency,rating,review_count,verified,health_score,last_verified_at,use_cases,platforms,pros,cons,source_url,category:categories(id,name,slug),features:tool_features(feature:features(name,slug)),pricing_plans(name,price,currency,billing_period,is_free,features)').eq('slug', slug).eq('status', 'published').maybeSingle()
-  if (!data) return null
-  const tool = { ...data, category: Array.isArray(data.category) ? data.category[0] || null : data.category, features: (data.features || []).map((item: any) => item.feature).filter(Boolean), pricing_plans: data.pricing_plans || [] } as Tool
-  const [relatedResult, reviewsResult] = await Promise.all([
-    tool.category ? db.from('tools').select('id,name,slug,short_description,rating,pricing_type').eq('category_id', tool.category.id).eq('status', 'published').neq('id', tool.id).order('rating', { ascending: false, nullsFirst: false }).limit(4) : Promise.resolve({ data: [] }),
-    db.from('reviews').select('id,rating,title,body,pros,cons,created_at').eq('tool_id', tool.id).eq('status', 'approved').order('created_at', { ascending: false }).limit(20),
-  ])
-  return { tool, related: relatedResult.data || [], reviews: (reviewsResult.data || []) as Review[] }
+  let db
+  try {
+    db = await createClient()
+    const { data } = await db.from('tools').select('id,name,slug,description,short_description,website_url,logo_url,pricing_type,starting_price,currency,rating,review_count,verified,health_score,last_verified_at,use_cases,platforms,pros,cons,source_url,category:categories(id,name,slug),features:tool_features(feature:features(name,slug)),pricing_plans(name,price,currency,billing_period,is_free,features)').eq('slug', slug).eq('status', 'published').maybeSingle()
+    if (!data) return null
+    const tool = { ...data, category: Array.isArray(data.category) ? data.category[0] || null : data.category, features: (data.features || []).map((item: any) => item.feature).filter(Boolean), pricing_plans: data.pricing_plans || [] } as Tool
+    const [relatedResult, reviewsResult] = await Promise.all([
+      tool.category ? db.from('tools').select('id,name,slug,short_description,rating,pricing_type').eq('category_id', tool.category.id).eq('status', 'published').neq('id', tool.id).order('rating', { ascending: false, nullsFirst: false }).limit(4) : Promise.resolve({ data: [] }),
+      db.from('reviews').select('id,rating,title,body,pros,cons,created_at').eq('tool_id', tool.id).eq('status', 'approved').order('created_at', { ascending: false }).limit(20),
+    ])
+    return { tool, related: relatedResult.data || [], reviews: (reviewsResult.data || []) as Review[] }
+  } catch (error) {
+    console.error('Tool lookup failed', error)
+    return null
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> { const result = await getTool((await params).slug); if (!result) return {}; const { tool } = result; return { title: `${tool.name} Review 2026 — Features, Pricing & Alternatives`, description: tool.short_description, alternates: { canonical: `/tools/${tool.slug}` }, openGraph: { title: `${tool.name} Review 2026`, description: tool.short_description, type: 'article', images: tool.logo_url ? [tool.logo_url] : [] } } }
