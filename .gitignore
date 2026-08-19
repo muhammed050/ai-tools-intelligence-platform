@@ -2,3 +2,8 @@ node_modules
 .next
 .env*
 .vercel
+
+# Local/generated files
+tsconfig.tsbuildinfo
+supabase/.temp/
+supabase_remote_schema.sql
