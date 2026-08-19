@@ -3,15 +3,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request })
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return response
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseKey) return response
 
-  const supabase = createServerClient(url, key, {
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookies) => {
-        cookies.forEach(({ name, value, options }) => request.cookies.set(name, value))
+        cookies.forEach(({ name, value }) => request.cookies.set(name, value))
         response = NextResponse.next({ request })
         cookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
       },
@@ -20,19 +20,41 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
-  const protectedPath = ['/dashboard', '/admin']
-  const needsAuth = protectedPath.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+  const isDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/')
+  const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/')
 
-  if (needsAuth && !user) {
+  if ((isDashboard || isAdmin) && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/sign-in'
     url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
   }
 
-  if (user && pathname.startsWith('/admin')) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (!profile || profile.role !== 'admin') {
+  if (user && isAdmin) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const adminOnly =
+      pathname === '/admin' ||
+      pathname.startsWith('/admin/users') ||
+      pathname.startsWith('/admin/analytics') ||
+      pathname.startsWith('/admin/ai') ||
+      pathname.startsWith('/admin/seo')
+
+    const editorArea =
+      pathname.startsWith('/admin/tools') ||
+      pathname.startsWith('/admin/reviews')
+
+    const allowed = adminOnly
+      ? profile?.role === 'admin'
+      : editorArea
+        ? ['admin', 'editor'].includes(profile?.role ?? '')
+        : profile?.role === 'admin'
+
+    if (!allowed) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       url.searchParams.set('error', 'access_denied')
