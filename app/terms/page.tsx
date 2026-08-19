@@ -1,0 +1,3 @@
+import type { Metadata } from 'next'
+export const metadata: Metadata = { title: 'Terms of Use', description: 'Terms for using the AITools discovery platform.' }
+export default function Terms() { return <main className="container" style={{ padding: '70px 0 100px', maxWidth: 900 }}><div className="eyebrow">Trust</div><h1>Terms of use</h1><p className="muted">AITools provides software discovery information for research and evaluation. Product details, pricing and availability can change, so verify important claims with the provider before purchasing.</p><h2>Community content</h2><p>Reviews and submissions must be accurate, relevant and lawful. We may moderate or remove content that does not meet those standards.</p></main> }

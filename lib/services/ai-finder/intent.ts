@@ -29,9 +29,14 @@ export function deterministicFallbackParser(query: string): FinderIntent {
 export async function extractIntent(query: string): Promise<{ intent: FinderIntent; source: 'ai' | 'development-fallback' }> {
   const provider = getAIProvider();
   if (!provider) return { intent: deterministicFallbackParser(query), source: 'development-fallback' };
-  const raw = await provider.generateStructuredOutput<FinderIntent>({
-    system: 'Extract only facts explicitly implied by the user request. Never invent tool names or capabilities. Normalize common feature names. Return empty optional fields when unknown.',
-    user: query, schema,
-  });
-  return { intent: finderIntentSchema.parse(raw), source:'ai' };
+  try {
+    const raw = await provider.generateStructuredOutput<FinderIntent>({
+      system: 'Extract only facts explicitly implied by the user request. Never invent tool names or capabilities. Normalize common feature names. Return empty optional fields when unknown.',
+      user: query, schema,
+    });
+    return { intent: finderIntentSchema.parse(raw), source: 'ai' };
+  } catch (error) {
+    console.error('AI Finder intent extraction failed; using local parser', error);
+    return { intent: deterministicFallbackParser(query), source: 'development-fallback' };
+  }
 }

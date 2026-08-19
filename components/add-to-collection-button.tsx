@@ -1,0 +1,7 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { FolderPlus } from 'lucide-react'
+
+type Collection = { id: string; name: string }
+export function AddToCollectionButton({ toolId }: { toolId: string }) { const [collections, setCollections] = useState<Collection[]>([]); const [selected, setSelected] = useState(''); const [message, setMessage] = useState(''); useEffect(() => { fetch('/api/collections').then((response) => response.ok ? response.json() : null).then((data) => { if (data) setCollections(data.collections) }).catch(() => undefined) }, []); async function add() { if (!selected) return; const response = await fetch(`/api/collections/${selected}/tools`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tool_id: toolId }) }); setMessage(response.ok ? 'Added' : response.status === 401 ? 'Sign in required' : 'Unable to add') } if (!collections.length) return null; return <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><select value={selected} onChange={(event) => setSelected(event.target.value)} aria-label="Choose a collection"><option value="">Collection</option>{collections.map((collection) => <option value={collection.id} key={collection.id}>{collection.name}</option>)}</select><button className="btn btn-secondary" type="button" onClick={add} disabled={!selected}><FolderPlus size={15} /> {message || 'Add'}</button></div> }

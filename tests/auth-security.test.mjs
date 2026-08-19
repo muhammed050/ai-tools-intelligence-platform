@@ -39,3 +39,11 @@ test('production hardening adds the profile column, strict admin role and reques
   assert.match(source, /dakarlem050@gmail\.com/)
   assert.match(source, /consume_rate_limit/)
 })
+
+test('user workflow migration keeps submissions private and reviews pending', async () => {
+  const source = await readFile('supabase/migrations/005_user_workflows.sql', 'utf8')
+  assert.match(source, /create table if not exists public\.tool_submissions/)
+  assert.match(source, /submitters read submissions/)
+  assert.match(source, /status='pending'/)
+  assert.match(source, /alter table public\.collections add column if not exists owner_id uuid/)
+})

@@ -18,7 +18,14 @@ export async function hybridSearch(query:string, intent:{category?:string;featur
     try { const embedding=await provider.generateEmbedding(query); const result=await db.rpc('match_tools',{query_embedding:embedding,match_threshold:.25,match_count:Math.max(limit*2,24)}); semanticRows=(result.data||[]) as any; } catch { semanticRows=[]; }
   }
   const ids=[...new Set([...keywordRows.map(x=>x.id),...semanticRows.map(x=>x.id)])].slice(0,limit*3);
-  if(!ids.length) return [] as {tool:ToolRecord;semanticScore:number;keywordScore:number}[];
+  if(!ids.length){
+    const terms=query.replace(/[,%()]/g,' ').split(/\s+/).filter(x=>x.length>2).slice(0,8);
+    if(!terms.length) return [] as {tool:ToolRecord;semanticScore:number;keywordScore:number}[];
+    const fallbackFilter=terms.flatMap(term=>[`name.ilike.%${term}%`,`short_description.ilike.%${term}%`,`description.ilike.%${term}%`]).join(',');
+    const fallback=await db.from('tools').select(select).eq('status','published').or(fallbackFilter).order('rating',{ascending:false,nullsFirst:false}).limit(limit);
+    if(fallback.error) throw fallback.error;
+    return (fallback.data||[]).map((row:any)=>({tool:flatten(row),semanticScore:0,keywordScore:.5}));
+  }
   const {data,error}=await db.from('tools').select(select).in('id',ids).eq('status','published');
   if(error) throw error;
   const km=new Map(keywordRows.map(x=>[x.id,x.rank])); const sm=new Map(semanticRows.map(x=>[x.id,x.similarity]));
