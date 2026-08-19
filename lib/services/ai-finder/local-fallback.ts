@@ -1,4 +1,4 @@
-import type { SearchIntent } from './intent'
+import type { FinderIntent } from './types'
 
 type Tool = {
   id: string
@@ -29,26 +29,30 @@ function normalize(value: string) {
   return value.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, ' ')
 }
 
-export function buildFallbackIntent(query: string): SearchIntent {
+export function buildFallbackIntent(query: string): FinderIntent {
   const text = normalize(query)
-  const categories = Object.entries(KEYWORDS)
-    .filter(([, words]) => words.some((word) => text.includes(normalize(word))))
-    .map(([category]) => category)
+  const category = Object.entries(KEYWORDS).find(([, words]) =>
+    words.some((word) => text.includes(normalize(word))),
+  )?.[0]
+
+  const budget: FinderIntent['budget'] = /\bfree\b|without paying|no cost|مجاني|بلا مقابل/.test(text)
+    ? 'free'
+    : /free trial|تجربة مجانية/.test(text)
+      ? 'freemium'
+      : 'any'
 
   return {
-    query,
-    categories: categories.slice(0, 3),
-    use_cases: [],
-    pricing: 'any',
-    platforms: [],
-    budget_max: null,
-    requirements: [],
+    category,
+    useCase: category === 'video' ? 'short-form video' : undefined,
+    budget,
+    features: [],
+    constraints: [],
   }
 }
 
-export function rankToolsLocally(tools: Tool[], query: string, intent?: SearchIntent) {
+export function rankToolsLocally(tools: Tool[], query: string, intent?: FinderIntent) {
   const text = normalize(query)
-  const categories = intent?.categories ?? []
+  const category = intent?.category
 
   return tools
     .map((tool) => {
@@ -61,17 +65,16 @@ export function rankToolsLocally(tools: Tool[], query: string, intent?: SearchIn
       ].filter(Boolean).join(' '))
 
       let score = 0
-      const words = text.split(/\s+/).filter((word) => word.length > 2)
-      for (const word of words) if (haystack.includes(word)) score += 8
-      for (const category of categories) {
-        if ((tool.use_cases ?? []).some((x) => normalize(x).includes(normalize(category)))) score += 20
-        if (haystack.includes(normalize(category))) score += 10
+      for (const word of text.split(/\s+/).filter((word) => word.length > 2)) {
+        if (haystack.includes(word)) score += 8
       }
+      if (category && haystack.includes(normalize(category))) score += 20
+      if (category && (tool.use_cases ?? []).some((x) => normalize(x).includes(normalize(category)))) score += 20
 
       score += Math.min(10, Number(tool.rating ?? 0) * 2)
       score += Math.min(10, Number(tool.quality_score ?? 0) / 10)
 
-      return { ...tool, match_score: Math.min(99, Math.round(score)) }
+      return { ...tool, match_score: Math.min(99, Math.max(1, Math.round(score))) }
     })
     .sort((a, b) => b.match_score - a.match_score)
 }
