@@ -6,7 +6,7 @@ import { rankRecommendations } from '@/lib/services/recommendations/score';
 import { createClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
 
-const bodySchema=z.object({query:z.string().trim().min(3).max(1000)});
+const bodySchema=z.object({query:z.string().trim().min(3).max(1000),locale:z.enum(['en','ar']).optional().default('en')});
 
 function getRateLimitKey(request: Request, userId?: string) {
   if (userId) return `user:${userId}`;
@@ -14,6 +14,16 @@ function getRateLimitKey(request: Request, userId?: string) {
   const realIp=request.headers.get('x-real-ip')?.trim();
   const ip=forwarded || realIp || 'unknown';
   return `ip:${createHash('sha256').update(ip).digest('hex')}`;
+}
+
+function localizedTool(tool:any, locale:'en'|'ar') {
+  if (locale !== 'ar') return tool;
+  return {
+    ...tool,
+    name: tool.name_ar || tool.name,
+    short_description: tool.short_description_ar || tool.short_description,
+    category: tool.category ? {...tool.category,name: tool.category.name_ar || tool.category.name} : tool.category,
+  };
 }
 
 export async function POST(request:Request){
@@ -42,9 +52,8 @@ export async function POST(request:Request){
       {key:'free',label:'Best Free Option',items:top.filter(x=>x.tool.pricing_type==='free'||x.tool.pricing_plans.some(p=>p.is_free)).slice(0,1)},
       {key:'alternative',label:'Best Alternative',items:top.slice(1,2)},
       {key:'premium',label:'Best Premium Option',items:top.filter(x=>['paid','contact_sales'].includes(x.tool.pricing_type)).slice(0,1)},
-    ].filter(x=>x.items.length);
+    ].filter(x=>x.items.length).map(group=>({...group,items:group.items.map(item=>({...item,tool:localizedTool(item.tool,body.locale)}))}));
 
-    // Reuse the ranked directory results to build a practical AI Stack without another model call.
     const seen=new Set<string>();
     const stack=ranked.filter(item=>{
       const category=item.tool.category?.slug || item.tool.category?.name || 'other';
@@ -53,15 +62,15 @@ export async function POST(request:Request){
       return true;
     }).slice(0,5).map(item=>({
       key:item.tool.category?.slug || 'other',
-      label:item.tool.category?.name || 'AI tool',
-      tool:item.tool,
+      label:body.locale==='ar' ? (item.tool.category?.name_ar || item.tool.category?.name || 'أداة ذكاء اصطناعي') : (item.tool.category?.name || 'AI tool'),
+      tool:localizedTool(item.tool,body.locale),
       score:item.score,
-      why:item.why?.[0] || 'Strong match for your request.',
+      why:item.why?.[0] || (body.locale==='ar' ? 'مطابقة قوية بناءً على طلبك.' : 'Strong match for your request.'),
     }));
 
     const sessionHash=createHash('sha256').update(key).digest('hex');
     await db.from('search_logs').insert({user_id:user?.id??null,query:body.query,intent,filters:intent,session_hash:sessionHash,result_tool_ids:top.map(x=>x.tool.id)});
-    return NextResponse.json({query:body.query,intent,source,results:categories,stack,total:top.length});
+    return NextResponse.json({query:body.query,locale:body.locale,intent,source,results:categories,stack,total:top.length});
   }catch(error){
     if(error instanceof z.ZodError) return NextResponse.json({error:'Invalid search request'},{status:400});
     console.error(error); return NextResponse.json({error:'Unable to complete the search right now.'},{status:500});
