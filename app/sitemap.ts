@@ -16,6 +16,10 @@ function localizedEntry(base: string, path: string, lastModified: Date, priority
   return { url: en, lastModified, changeFrequency, priority, alternates: { languages: { en, ar } } }
 }
 
+function seoPath(slug: string) {
+  return `/seo-pages/${slug}`
+}
+
 export async function generateSitemaps() {
   try {
     const db = await createClient()
@@ -44,6 +48,10 @@ export default async function sitemap({ id }: { id: Promise<string> }): Promise<
 
     if (page === 0) {
       for (const path of staticPaths) entries.push(localizedEntry(base, path, now, path === '' ? 1 : 0.7))
+      // SEO intent pages are defined centrally and share the same dynamic route.
+      // Importing here keeps the sitemap aligned with the actual SEO page catalog.
+      const { seoPages } = await import('./seo-pages')
+      for (const seo of seoPages) entries.push(localizedEntry(base, seoPath(seo.slug), now, 0.75, 'weekly'))
     }
     for (const item of categories) entries.push(localizedEntry(base, `/categories/${item.slug}`, item.updated_at ? new Date(item.updated_at) : now, 0.7))
     for (const item of articles) entries.push(localizedEntry(base, `/blog/${item.slug}`, item.updated_at ? new Date(item.updated_at) : item.published_at ? new Date(item.published_at) : now, 0.6, 'monthly'))
