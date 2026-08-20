@@ -3,6 +3,10 @@ export type AIProvider = {
   generateEmbedding(input: string): Promise<number[]>;
 };
 
+export type AIDecisionProvider = {
+  generateStructuredOutput<T>(input: { system: string; user: string; schema: Record<string, unknown> }): Promise<T>;
+};
+
 export type AIProviderName = 'gemini' | 'groq' | 'cerebras' | 'openrouter';
 
 const jsonHeaders = { 'content-type': 'application/json' };
@@ -33,18 +37,24 @@ function markCooldown(name: AIProviderName, ms = 60_000) {
 
 function orderedProviders() {
   const configured = FREE_PROVIDERS.filter(name => Boolean(keyFor(name)));
-  const preferred = (process.env.AI_FREE_PROVIDER_ORDER || '').split(',').map(x => x.trim()).filter(Boolean) as AIProviderName[];
-  const order = [...preferred, ...configured].filter((name, index, list) => configured.includes(name) && list.indexOf(name) === index);
+  const preferred = (process.env.AI_FREE_PROVIDER_ORDER || '')
+    .split(',')
+    .map(x => x.trim())
+    .filter(Boolean) as AIProviderName[];
+  const order = [...preferred, ...configured].filter(
+    (name, index, list) => configured.includes(name) && list.indexOf(name) === index,
+  );
   return [...order.filter(isAvailable), ...order.filter(name => !isAvailable(name))];
 }
 
-class MultiModelGateway {
+class MultiModelGateway implements AIDecisionProvider {
   private async request(name: AIProviderName, system: string, user: string, schema: Record<string, unknown>) {
     const key = keyFor(name);
     if (!key) throw new Error(`${name}:missing_key`);
     const model = modelFor(name);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8_000);
+
     try {
       let url: string;
       let body: unknown;
@@ -55,26 +65,47 @@ class MultiModelGateway {
         body = {
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ parts: [{ text: user }] }],
-          generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: schema },
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+          },
         };
       } else {
-        url = name === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : name === 'cerebras' ? 'https://api.cerebras.ai/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
+        url = name === 'groq'
+          ? 'https://api.groq.com/openai/v1/chat/completions'
+          : name === 'cerebras'
+            ? 'https://api.cerebras.ai/v1/chat/completions'
+            : 'https://openrouter.ai/api/v1/chat/completions';
         headers.authorization = `Bearer ${key}`;
         body = {
           model,
           temperature: 0,
-          messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
           response_format: { type: 'json_object' },
         };
       }
 
-      const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal, cache: 'no-store' });
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+
       if (!response.ok) {
         if (response.status === 429 || response.status >= 500) markCooldown(name);
         throw new Error(`${name}:http_${response.status}`);
       }
+
       const data = await response.json() as Record<string, any>;
-      const content = name === 'gemini' ? data.candidates?.[0]?.content?.parts?.[0]?.text : data.choices?.[0]?.message?.content;
+      const content = name === 'gemini'
+        ? data.candidates?.[0]?.content?.parts?.[0]?.text
+        : data.choices?.[0]?.message?.content;
       if (!content) throw new Error(`${name}:empty_response`);
       return JSON.parse(content) as unknown;
     } finally {
@@ -82,12 +113,15 @@ class MultiModelGateway {
     }
   }
 
-  async generateStructuredOutput<T>({ system, user, schema }: { system: string; user: string; schema: Record<string, unknown> }) {
+  async generateStructuredOutput<T>({ system, user, schema }: {
+    system: string;
+    user: string;
+    schema: Record<string, unknown>;
+  }) {
     const errors: string[] = [];
     for (const name of orderedProviders()) {
       try {
-        const result = await this.request(name, system, user, schema);
-        return result as T;
+        return await this.request(name, system, user, schema) as T;
       } catch (error) {
         errors.push(error instanceof Error ? error.message : `${name}:failed`);
       }
@@ -103,22 +137,45 @@ class LegacyOpenAIProvider implements AIProvider {
   private embeddingModel = process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
 
   private async request(path: string, body: unknown) {
-    const response = await fetch(`${this.base}${path}`, { method: 'POST', headers: { ...jsonHeaders, authorization: `Bearer ${this.key}` }, body: JSON.stringify(body), cache: 'no-store' });
+    const response = await fetch(`${this.base}${path}`, {
+      method: 'POST',
+      headers: { ...jsonHeaders, authorization: `Bearer ${this.key}` },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
     if (!response.ok) throw new Error(`AI provider request failed: ${response.status}`);
     return response.json() as Promise<Record<string, any>>;
   }
 
-  async generateStructuredOutput<T>({ system, user, schema }: { system: string; user: string; schema: Record<string, unknown> }) {
-    const data = await this.request('/chat/completions', { model: this.model, temperature: 0, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], response_format: { type: 'json_schema', json_schema: { name: 'finder_intent', strict: true, schema } } });
+  async generateStructuredOutput<T>({ system, user, schema }: {
+    system: string;
+    user: string;
+    schema: Record<string, unknown>;
+  }) {
+    const data = await this.request('/chat/completions', {
+      model: this.model,
+      temperature: 0,
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'finder_intent', strict: true, schema },
+      },
+    });
     const content = data.choices?.[0]?.message?.content;
     if (!content) throw new Error('AI provider returned no structured output');
     return JSON.parse(content) as T;
   }
 
   async generateEmbedding(input: string) {
-    const data = await this.request('/embeddings', { model: this.embeddingModel, input, dimensions: 1536 });
+    const data = await this.request('/embeddings', {
+      model: this.embeddingModel,
+      input,
+      dimensions: 1536,
+    });
     const embedding = data.data?.[0]?.embedding;
-    if (!Array.isArray(embedding) || embedding.length !== 1536) throw new Error('Embedding dimension mismatch: expected 1536');
+    if (!Array.isArray(embedding) || embedding.length !== 1536) {
+      throw new Error('Embedding dimension mismatch: expected 1536');
+    }
     return embedding as number[];
   }
 }
@@ -128,11 +185,16 @@ export function getAIProvider(): AIProvider | null {
   return null;
 }
 
-export function getAIDecisionGateway(): AIProvider | null {
+export function getAIDecisionGateway(): AIDecisionProvider | null {
   if (!FREE_PROVIDERS.some(name => keyFor(name))) return null;
   return new MultiModelGateway();
 }
 
 export function getAIProviderStatus() {
-  return orderedProviders().map(name => ({ name, model: modelFor(name), configured: Boolean(keyFor(name)), available: isAvailable(name) }));
+  return FREE_PROVIDERS.map(name => ({
+    name,
+    model: modelFor(name),
+    configured: Boolean(keyFor(name)),
+    available: isAvailable(name),
+  }));
 }
