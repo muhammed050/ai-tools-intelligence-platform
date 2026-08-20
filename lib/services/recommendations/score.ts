@@ -1,7 +1,8 @@
 import type { FinderIntent, ToolRecord, Recommendation } from '../ai-finder/types';
 import { checkHardConstraints } from '../ai-finder/hard-constraints';
 
-const weights = { intent: .30, features: .20, budget: .15, quality: .10, platform: .07, experience: .05, freshness: .05, reliability: .05, popularity: .03 } as const;
+const weights = { intent: .30, features: .20, budget: .15, quality: .10, platform: .07, experience: .05, freshness: .05, reliability: .08 } as const;
+const conversion = .5; // neutral until first-party conversion data is available; never dominates ranking
 function norm(value: number) { return Math.max(0, Math.min(1, value)); }
 function tokens(input: string) { return new Set(input.toLowerCase().split(/[^\p{L}\p{N}-]+/u).filter(Boolean)); }
 function intentRelevance(intent: FinderIntent, tool: ToolRecord, semanticScore = 0, keywordScore = 0) {
@@ -44,7 +45,9 @@ function reliability(tool: ToolRecord) { return norm(((tool.health_score ?? 50) 
 function quality(tool: ToolRecord) { return tool.rating ? norm(tool.rating / 5) : .5; }
 function popularity(tool: ToolRecord) { return norm(Math.log10((tool.review_count || 0) + 1) / 4); }
 export function calculateRecommendationScore(intent: FinderIntent, tool: ToolRecord, semanticScore = 0, keywordScore = 0) {
-  return Math.round(100 * (intentRelevance(intent, tool, semanticScore, keywordScore) * weights.intent + featureFit(intent, tool) * weights.features + budgetFit(intent, tool) * weights.budget + quality(tool) * weights.quality + platformFit(intent, tool) * weights.platform + experienceFit(intent, tool) * weights.experience + freshness(tool) * weights.freshness + reliability(tool) * weights.reliability + popularity(tool) * weights.popularity) * 10) / 10;
+  const qualitySignal = norm(quality(tool) * .8 + popularity(tool) * .2);
+  const conversionSignal = conversion * .0;
+  return Math.round(100 * (intentRelevance(intent, tool, semanticScore, keywordScore) * weights.intent + featureFit(intent, tool) * weights.features + budgetFit(intent, tool) * weights.budget + qualitySignal * weights.quality + platformFit(intent, tool) * weights.platform + experienceFit(intent, tool) * weights.experience + freshness(tool) * weights.freshness + reliability(tool) * weights.reliability + conversionSignal) * 10) / 10;
 }
 export function explainMatch(intent: FinderIntent, tool: ToolRecord): { why: string[]; limitations: string[] } {
   const wanted = new Set((intent.features || []).map(x => x.toLowerCase().replace(/\s+/g, '-'))); const why: string[] = [];
