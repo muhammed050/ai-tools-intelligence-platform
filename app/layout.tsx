@@ -38,9 +38,13 @@ export async function generateMetadata() {
     metadataBase: new URL(siteUrl),
     title: { default: title, template: isArabic ? '%s | إيلديفو' : '%s | Eldevo' },
     description,
+    icons: {
+      icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+      apple: [{ url: '/apple-icon.svg', type: 'image/svg+xml' }],
+    },
     alternates: { canonical, languages: { en: enUrl, ar: arUrl, 'x-default': enUrl } },
-    openGraph: { type: 'website', siteName: SITE_NAME, title, description, url: canonical, locale: isArabic ? 'ar_SA' : 'en_US', alternateLocale: isArabic ? ['en_US'] : ['ar_SA'] },
-    twitter: { card: 'summary_large_image', title, description },
+    openGraph: { type: 'website', siteName: SITE_NAME, title, description, url: canonical, locale: isArabic ? 'ar_SA' : 'en_US', alternateLocale: isArabic ? ['en_US'] : ['ar_SA'], images: [{ url: `${siteUrl}/icon.svg`, width: 180, height: 180, alt: 'Eldevo' }] },
+    twitter: { card: 'summary_large_image', title, description, images: [`${siteUrl}/icon.svg`] },
     robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large' as const, 'max-snippet': -1 } },
   }
 }
@@ -61,7 +65,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
-      { '@type': 'Organization', name: SITE_NAME, url: siteUrl, logo: `${siteUrl}/favicon.svg` },
+      { '@type': 'Organization', name: SITE_NAME, url: siteUrl, logo: `${siteUrl}/icon.svg` },
       { '@type': 'WebSite', name: SITE_NAME, url: locale === 'ar' ? `${siteUrl}/ar/` : siteUrl, description: locale === 'ar' ? 'دليل أدوات الذكاء الاصطناعي واكتشافها ومقارنتها.' : SITE_DESCRIPTION, inLanguage: locale === 'ar' ? 'ar' : 'en', potentialAction: { '@type': 'SearchAction', target: `${siteUrl}${localizedPath('/tools', locale)}?q={search_term_string}`, 'query-input': 'required name=search_term_string' } },
     ],
   }
