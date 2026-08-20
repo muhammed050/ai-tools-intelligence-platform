@@ -1,0 +1,30 @@
+.header-actions { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+.language-switcher, .header-login { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: #334155; font-size: 12px; font-weight: 750; cursor: pointer; transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease; }
+.language-switcher:hover, .header-login:hover { border-color: #bfdbfe; background: #eff6ff; color: var(--brand); transform: translateY(-1px); }
+.account-menu { position: relative; }
+.account-trigger { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; max-width: 180px; padding: 5px 9px 5px 6px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: #334155; cursor: pointer; }
+.account-trigger:hover { border-color: #bfdbfe; background: #f8fbff; }
+.account-avatar { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), var(--ai)); color: #fff; }
+.account-email { overflow: hidden; max-width: 95px; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 750; }
+.account-dropdown { position: absolute; top: calc(100% + 9px); inset-inline-end: 0; z-index: 80; display: grid; min-width: 220px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: var(--shadow-lg); }
+.account-dropdown a, .account-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 11px; border: 0; border-radius: 9px; background: transparent; color: #334155; font-size: 13px; font-weight: 700; text-align: start; cursor: pointer; }
+.account-dropdown a:hover, .account-dropdown button:hover { background: #eff6ff; color: var(--brand); }
+.account-email-full { padding: 8px 11px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: start; }
+
+@media (max-width: 1100px) {
+  .nav-shell { gap: 12px; }
+  .main-nav a { padding-inline: 8px; }
+  .global-search { flex-basis: 235px; }
+  .account-email { display: none; }
+  .account-trigger { padding-right: 7px; }
+}
+
+@media (max-width: 900px) {
+  .header-actions { display: none; }
+  .global-search { flex: 1; max-width: 360px; }
+}
+
+@media (max-width: 620px) {
+  .nav-shell { min-height: 62px; }
+  .global-search { max-width: none; }
+}
