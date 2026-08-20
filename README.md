@@ -2,6 +2,8 @@
 
 Production-ready Next.js + Supabase platform for discovering and comparing AI tools.
 
+> Branch preview note: changes pushed to `feature/arabic-i18n-rtl` are intended for Vercel Preview deployments only and must not be merged into `main` unless explicitly requested.
+
 ## Authentication Setup
 
 Authentication uses Supabase Auth and server-managed SSR cookies. There is no localStorage or custom authentication system.
