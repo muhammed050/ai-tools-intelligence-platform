@@ -1,16 +1,17 @@
 'use client'
 
 import { Languages } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 export function LanguageSwitcher({ locale }: { locale: 'en' | 'ar' }) {
-  const router = useRouter()
+  const pathname = usePathname() || '/'
   const nextLocale = locale === 'ar' ? 'en' : 'ar'
 
   function switchLanguage() {
+    const withoutLocale = pathname.replace(/^\/(ar|en)(?=\/|$)/, '') || '/'
+    const target = nextLocale === 'ar' ? `/ar${withoutLocale === '/' ? '/' : withoutLocale}` : withoutLocale
     document.cookie = `eldevo_locale=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`
-    router.refresh()
-    window.location.reload()
+    window.location.assign(target)
   }
 
   return (
