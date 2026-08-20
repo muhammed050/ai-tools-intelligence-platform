@@ -5,6 +5,17 @@ import { getSiteUrl } from '@/lib/site'
 const PAGE_SIZE = 45_000
 const staticPaths = ['', '/ai-finder', '/tools', '/categories', '/compare', '/blog', '/about', '/contact', '/privacy', '/terms', '/submit-tool', '/affiliate-disclosure', '/best-ai-video-tools', '/best-free-ai-video-tools']
 
+function localizedUrl(base: string, path: string, locale: 'en' | 'ar') {
+  if (locale === 'en') return `${base}${path || '/'}`
+  return `${base}/ar${path || '/'}`
+}
+
+function localizedEntry(base: string, path: string, lastModified: Date, priority: number, changeFrequency: 'weekly' | 'monthly' = 'weekly'): MetadataRoute.Sitemap[number] {
+  const en = localizedUrl(base, path, 'en')
+  const ar = localizedUrl(base, path, 'ar')
+  return { url: en, lastModified, changeFrequency, priority, alternates: { languages: { en, ar } } }
+}
+
 export async function generateSitemaps() {
   try {
     const db = await createClient()
@@ -29,13 +40,16 @@ export default async function sitemap({ id }: { id: Promise<string> }): Promise<
     const tools = toolsResult.data ?? []
     const categories = categoriesResult.data ?? []
     const articles = articlesResult.data ?? []
-    return [
-      ...(page === 0 ? staticPaths.map((path) => ({ url: `${base}${path}`, lastModified: now, changeFrequency: 'weekly' as const, priority: path === '' ? 1 : 0.7 })) : []),
-      ...categories.map((item) => ({ url: `${base}/categories/${item.slug}`, lastModified: item.updated_at ? new Date(item.updated_at) : now, changeFrequency: 'weekly' as const, priority: 0.7 })),
-      ...articles.map((item) => ({ url: `${base}/blog/${item.slug}`, lastModified: item.updated_at ? new Date(item.updated_at) : item.published_at ? new Date(item.published_at) : now, changeFrequency: 'monthly' as const, priority: 0.6 })),
-      ...tools.map((item) => ({ url: `${base}/tools/${item.slug}`, lastModified: item.updated_at ? new Date(item.updated_at) : now, changeFrequency: 'weekly' as const, priority: 0.8 })),
-    ]
+    const entries: MetadataRoute.Sitemap = []
+
+    if (page === 0) {
+      for (const path of staticPaths) entries.push(localizedEntry(base, path, now, path === '' ? 1 : 0.7))
+    }
+    for (const item of categories) entries.push(localizedEntry(base, `/categories/${item.slug}`, item.updated_at ? new Date(item.updated_at) : now, 0.7))
+    for (const item of articles) entries.push(localizedEntry(base, `/blog/${item.slug}`, item.updated_at ? new Date(item.updated_at) : item.published_at ? new Date(item.published_at) : now, 0.6, 'monthly'))
+    for (const item of tools) entries.push(localizedEntry(base, `/tools/${item.slug}`, item.updated_at ? new Date(item.updated_at) : now, 0.8))
+    return entries
   } catch {
-    return page === 0 ? staticPaths.map((path) => ({ url: `${base}${path}`, lastModified: now, changeFrequency: 'weekly' as const, priority: path === '' ? 1 : 0.6 })) : []
+    return page === 0 ? staticPaths.map((path) => localizedEntry(base, path, now, path === '' ? 1 : 0.6)) : []
   }
 }
