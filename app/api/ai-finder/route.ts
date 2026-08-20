@@ -22,14 +22,11 @@ export async function POST(request:Request){
     const db=await createClient();
     const {data:{user}}=await db.auth.getUser();
 
-    // Anonymous users get a conservative hourly quota; authenticated users get a larger daily quota.
     const limit=user ? 100 : 10;
     const windowSeconds=user ? 86400 : 3600;
     const key=getRateLimitKey(request,user?.id);
     const {data:allowed,error:rateLimitError}=await db.rpc('consume_rate_limit',{
-      p_key:key,
-      p_limit:limit,
-      p_window_seconds:windowSeconds,
+      p_key:key,p_limit:limit,p_window_seconds:windowSeconds,
     });
     if(rateLimitError){
       console.error('AI finder rate-limit error',rateLimitError);
@@ -46,20 +43,23 @@ export async function POST(request:Request){
     const candidates=await hybridSearch(body.query,intent,30);
     const ranked=rankRecommendations(intent,candidates);
     const top=ranked.slice(0,12);
+
+    // Show several genuinely ranked recommendations instead of reducing each section to one tool.
+    // Keep the sections useful and avoid repeating the same tool across them.
+    const used=new Set<string>();
+    const takeUnique=(items:typeof top,count:number)=>items.filter(item=>!used.has(item.tool.id)).slice(0,count).map(item=>{used.add(item.tool.id);return item;});
+    const best=takeUnique(top,6);
+    const free=takeUnique(top.filter(x=>x.tool.pricing_type==='free'||x.tool.pricing_plans.some(p=>p.is_free)),3);
+    const premium=takeUnique(top.filter(x=>['paid','contact_sales'].includes(x.tool.pricing_type)),3);
     const categories=[
-      {key:'best',label:'Best Match',items:top.slice(0,1)},
-      {key:'free',label:'Best Free Option',items:top.filter(x=>x.tool.pricing_type==='free'||x.tool.pricing_plans.some(p=>p.is_free)).slice(0,1)},
-      {key:'alternative',label:'Best Alternative',items:top.slice(1,2)},
-      {key:'premium',label:'Best Premium Option',items:top.filter(x=>['paid','contact_sales'].includes(x.tool.pricing_type)).slice(0,1)},
+      {key:'best',label:'Top Recommendations',items:best},
+      {key:'free',label:'Best Free Options',items:free},
+      {key:'premium',label:'Best Premium Options',items:premium},
     ].filter(x=>x.items.length);
 
     const sessionHash=createHash('sha256').update(key).digest('hex');
     await db.from('search_logs').insert({
-      user_id:user?.id??null,
-      query:body.query,
-      intent,
-      filters:intent,
-      session_hash:sessionHash,
+      user_id:user?.id??null,query:body.query,intent,filters:intent,session_hash:sessionHash,
       result_tool_ids:top.map(x=>x.tool.id),
     });
     return NextResponse.json({query:body.query,intent,source,results:categories,total:top.length});
