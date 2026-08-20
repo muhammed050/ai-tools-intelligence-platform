@@ -21,6 +21,15 @@ const categorySeed = [
   { name: 'Business & Marketing', name_ar: 'الأعمال والتسويق', description: 'Improve growth, sales and operations.', description_ar: 'طوّر التسويق والمبيعات وسير العمل.', slug: 'marketing', Icon: BriefcaseBusiness },
 ]
 
+const intentSeeds = [
+  { slug: 'ai-tools-for-youtube', en: 'AI tools for YouTube', ar: 'أدوات الذكاء الاصطناعي لليوتيوب', query: 'I need an AI tool for YouTube' },
+  { slug: 'ai-tools-for-tiktok', en: 'AI tools for TikTok', ar: 'أدوات الذكاء الاصطناعي لتيك توك', query: 'I need an AI tool for TikTok' },
+  { slug: 'free-ai-video-tools', en: 'Free AI video tools', ar: 'أدوات فيديو AI مجانية', query: 'I need a free AI video tool' },
+  { slug: 'chatgpt-alternatives', en: 'ChatGPT alternatives', ar: 'بدائل ChatGPT', query: 'I need an alternative to ChatGPT' },
+  { slug: 'ai-tools-for-students', en: 'AI tools for students', ar: 'أدوات AI للطلاب', query: 'I need AI tools for studying' },
+  { slug: 'ai-tools-for-content-creators', en: 'AI tools for creators', ar: 'أدوات AI لصناع المحتوى', query: 'I need AI tools for content creation' },
+]
+
 export default async function Home() {
   const locale: Locale = normalizeLocale((await cookies()).get(LOCALE_COOKIE)?.value)
   const ar = locale === 'ar'
@@ -64,7 +73,16 @@ export default async function Home() {
       </div>
     </section>
 
-    <section className="container" style={{ padding: '62px 0 20px' }}>
+    <section className="container" style={{ padding: '44px 0 8px' }} aria-labelledby="intent-heading">
+      <div className="section-head"><div><div className="eyebrow">{ar ? 'ابدأ من مهمتك' : 'Start with your task'}</div><h2 id="intent-heading">{ar ? 'ماذا تريد أن تنجز؟' : 'What are you trying to do?'}</h2></div><Link className="btn btn-secondary" href="/ai-finder">{ar ? 'افتح المكتشف' : 'Open Finder'} <ArrowRight size={15} /></Link></div>
+      <div className="tool-grid">{intentSeeds.map((item) => <Link key={item.slug} href={`/ai-finder?q=${encodeURIComponent(item.query)}`} className="card tool-card"><div className="tool-logo"><Sparkles size={20} /></div><h3 style={{ margin: '18px 0 6px' }}>{ar ? item.ar : item.en}</h3><p className="muted" style={{ margin: 0 }}>{ar ? 'ابدأ بطلبك ودع Eldevo يرشح لك الأدوات المناسبة.' : 'Start with your goal and let Eldevo shortlist the tools that fit.'}</p><span style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--brand)', fontSize: 13 }}>{ar ? 'ابحث الآن' : 'Find tools'} <ArrowRight size={14} /></span></Link>)}</div>
+    </section>
+
+    <section className="container" style={{ padding: '28px 0 20px' }} aria-label={ar ? 'صفحات البحث الشائعة' : 'Popular search pages'}>
+      <div className="card" style={{ padding: '24px 26px' }}><div className="eyebrow">{ar ? 'اكتشف عبر البحث' : 'Discover through search'}</div><p className="muted" style={{ margin: '7px 0 14px' }}>{ar ? 'صفحات مركزة على المهام والاحتياجات الشائعة تساعدك على الانتقال من البحث إلى الأداة المناسبة بسرعة.' : 'Task-focused pages help people move from a real search intent to a useful shortlist quickly.'}</p><div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{intentSeeds.map((item) => <Link key={item.slug} className="btn btn-secondary" href={`/seo-pages/${item.slug}`} style={{ fontSize: 13 }}>{ar ? item.ar : item.en}</Link>)}</div></div>
+    </section>
+
+    <section className="container" style={{ padding: '20px 0' }}>
       <div className="section-head"><div><div className="eyebrow">{ar ? 'استكشف حسب احتياجك' : 'Explore by need'}</div><h2>{ar ? 'أشهر تصنيفات الذكاء الاصطناعي' : 'Popular AI categories'}</h2></div><Link className="btn btn-secondary" href="/categories">{ar ? 'عرض الكل' : 'View all'} <ArrowRight size={15} /></Link></div>
       <div className="tool-grid">{categoryCards.map(({ displayName, displayDescription, slug, Icon }) => <Link href={`/categories/${slug}`} className="card tool-card" key={slug}><div className="tool-logo"><Icon size={21} /></div><h3 style={{ margin: '18px 0 4px' }}>{displayName}</h3><p className="muted" style={{ margin: 0 }}>{displayDescription}</p><span style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--brand)', fontSize: 13 }}>{ar ? 'استكشف التصنيف' : 'Explore category'} <ArrowRight size={14} /></span></Link>)}</div>
     </section>
