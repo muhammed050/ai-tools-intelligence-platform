@@ -16,6 +16,7 @@ export async function updateSession(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-eldevo-locale', locale)
+  requestHeaders.set('x-eldevo-pathname', pathname)
 
   let response = NextResponse.next({ request: { headers: requestHeaders } })
   response.cookies.set(LOCALE_COOKIE, locale, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
