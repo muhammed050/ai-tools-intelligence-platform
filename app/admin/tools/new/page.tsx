@@ -4,135 +4,18 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Category = { id: string; name: string }
-
 type ToolForm = {
-  name: string
-  slug: string
-  website_url: string
-  short_description: string
-  description: string
-  category_id: string
-  pricing_type: string
-  starting_price: string
-  currency: string
-  logo_url: string
-  source_url: string
-  verified: boolean
-  featured: boolean
-  status: string
+  name:string; slug:string; website_url:string; short_description:string; description:string
+  category_id:string; pricing_type:string; starting_price:string; currency:string; logo_url:string; source_url:string
+  verified:boolean; featured:boolean; status:string
+  ar_name:string; ar_short_description:string; ar_description:string; ar_seo_title:string; ar_seo_description:string; ar_faq:string
 }
-
 export default function NewTool() {
-  const [cats, setCats] = useState<Category[]>([])
-  const [categoriesLoading, setCategoriesLoading] = useState(true)
-  const [categoriesError, setCategoriesError] = useState('')
-  const [f, setF] = useState<ToolForm>({
-    name: '', slug: '', website_url: '', short_description: '', description: '',
-    category_id: '', pricing_type: 'freemium', starting_price: '', currency: 'USD',
-    logo_url: '', source_url: '', verified: false, featured: false, status: 'draft'
-  })
-  const [error, setError] = useState('')
-  const router = useRouter()
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadCategories() {
-      try {
-        setCategoriesLoading(true)
-        setCategoriesError('')
-        const response = await fetch('/api/admin/categories')
-        const data = await response.json().catch(() => null)
-        if (!response.ok) throw new Error(data?.error || 'Failed to load categories')
-        const categories = Array.isArray(data) ? data : data?.categories
-        if (!Array.isArray(categories)) throw new Error('Invalid categories response')
-        if (!cancelled) setCats(categories)
-      } catch (err) {
-        if (!cancelled) {
-          setCats([])
-          setCategoriesError(err instanceof Error ? err.message : 'Failed to load categories')
-        }
-      } finally {
-        if (!cancelled) setCategoriesLoading(false)
-      }
-    }
-
-    loadCategories()
-    return () => { cancelled = true }
-  }, [])
-
-  const set = (k: keyof ToolForm, v: string | boolean) => setF(x => ({ ...x, [k]: v }))
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    try {
-      const r = await fetch('/api/admin/tools', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          ...f,
-          starting_price: f.starting_price ? Number(f.starting_price) : null,
-          logo_url: f.logo_url || null,
-          source_url: f.source_url || null
-        })
-      })
-      const data = await r.json().catch(() => null)
-      if (!r.ok) {
-        setError(data?.error || 'Unable to create tool')
-        return
-      }
-      router.push('/admin/tools')
-    } catch {
-      setError('Unable to connect to the server. Please try again.')
-    }
-  }
-
-  return (
-    <main className="container" style={{ padding: '55px 0' }}>
-      <form onSubmit={submit} className="card" style={{ padding: 28, maxWidth: 900, margin: 'auto' }}>
-        <h1>Add AI tool</h1>
-        <p className="muted">Create as draft, then publish after review.</p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          {[
-            ['name', 'Tool name'], ['slug', 'Slug'], ['website_url', 'Website URL'],
-            ['short_description', 'Short description'], ['logo_url', 'Logo URL'],
-            ['source_url', 'Source URL'], ['starting_price', 'Starting price'], ['currency', 'Currency']
-          ].map(([k, l]) => (
-            <label key={k}>{l}
-              <input
-                value={f[k as keyof ToolForm] as string}
-                onChange={e => set(k as keyof ToolForm, e.target.value)}
-                required={['name', 'slug', 'website_url', 'short_description'].includes(k)}
-              />
-            </label>
-          ))}
-
-          <label>Category
-            <select value={f.category_id} onChange={e => set('category_id', e.target.value)} required disabled={categoriesLoading || cats.length === 0}>
-              <option value="">{categoriesLoading ? 'Loading categories…' : cats.length ? 'Select category' : 'No categories available'}</option>
-              {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            {categoriesError && <small style={{ color: '#fb7185' }}>Could not load categories: {categoriesError}</small>}
-          </label>
-
-          <label>Pricing
-            <select value={f.pricing_type} onChange={e => set('pricing_type', e.target.value)}>
-              {['free', 'freemium', 'paid', 'free_trial', 'contact_sales'].map(x => <option key={x}>{x}</option>)}
-            </select>
-          </label>
-
-          <label style={{ gridColumn: '1/-1' }}>Full description
-            <textarea rows={8} value={f.description} onChange={e => set('description', e.target.value)} required />
-          </label>
-        </div>
-
-        {error && <p style={{ color: '#fb7185' }}>{error}</p>}
-        <button className="btn btn-primary" style={{ marginTop: 20 }} disabled={categoriesLoading || cats.length === 0}>
-          Create tool
-        </button>
-      </form>
-    </main>
-  )
+  const [cats,setCats]=useState<Category[]>([]); const [categoriesLoading,setCategoriesLoading]=useState(true); const [categoriesError,setCategoriesError]=useState('')
+  const [f,setF]=useState<ToolForm>({name:'',slug:'',website_url:'',short_description:'',description:'',category_id:'',pricing_type:'freemium',starting_price:'',currency:'USD',logo_url:'',source_url:'',verified:false,featured:false,status:'draft',ar_name:'',ar_short_description:'',ar_description:'',ar_seo_title:'',ar_seo_description:'',ar_faq:''})
+  const [error,setError]=useState(''); const router=useRouter()
+  useEffect(()=>{let cancelled=false; (async()=>{try{const r=await fetch('/api/admin/categories');const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.error||'Failed to load categories');const c=Array.isArray(d)?d:d?.categories;if(!Array.isArray(c))throw new Error('Invalid categories response');if(!cancelled)setCats(c)}catch(e){if(!cancelled){setCats([]);setCategoriesError(e instanceof Error?e.message:'Failed to load categories')}}finally{if(!cancelled)setCategoriesLoading(false)}})();return()=>{cancelled=true}},[])
+  const set=(k:keyof ToolForm,v:string|boolean)=>setF(x=>({...x,[k]:v}))
+  async function submit(e:React.FormEvent){e.preventDefault();setError('');try{const r=await fetch('/api/admin/tools',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...f,starting_price:f.starting_price?Number(f.starting_price):null,logo_url:f.logo_url||null,source_url:f.source_url||null,translation_ar:{name:f.ar_name,short_description:f.ar_short_description,description:f.ar_description,seo_title:f.ar_seo_title,seo_description:f.ar_seo_description,faq:f.ar_faq}})});const d=await r.json().catch(()=>null);if(!r.ok){setError(d?.error||'Unable to create tool');return}router.push('/admin/tools')}catch{setError('Unable to connect to the server. Please try again.')}}
+  return <main className="container" style={{padding:'55px 0'}}><form onSubmit={submit} className="card" style={{padding:28,maxWidth:1000,margin:'auto'}}><h1>Add AI tool</h1><p className="muted">Create both English and Arabic content. Arabic SEO fields are optional but recommended.</p><section><h2>🇬🇧 English</h2><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>{[['name','Tool name'],['slug','Slug'],['website_url','Website URL'],['short_description','Short description'],['logo_url','Logo URL'],['source_url','Source URL'],['starting_price','Starting price'],['currency','Currency']].map(([k,l])=><label key={k}>{l}<input value={f[k as keyof ToolForm] as string} onChange={e=>set(k as keyof ToolForm,e.target.value)} required={['name','slug','website_url','short_description'].includes(k)}/></label>)}<label>Category<select value={f.category_id} onChange={e=>set('category_id',e.target.value)} required disabled={categoriesLoading||cats.length===0}><option value="">{categoriesLoading?'Loading categories…':cats.length?'Select category':'No categories available'}</option>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>{categoriesError&&<small style={{color:'#fb7185'}}>{categoriesError}</small>}</label><label>Pricing<select value={f.pricing_type} onChange={e=>set('pricing_type',e.target.value)}>{['free','freemium','paid','free_trial','contact_sales'].map(x=><option key={x}>{x}</option>)}</select></label><label style={{gridColumn:'1/-1'}}>Full description<textarea rows={8} value={f.description} onChange={e=>set('description',e.target.value)} required/></label></div></section><section style={{marginTop:30,direction:'rtl'}}><h2>🇸🇦 العربية</h2><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}><label>اسم الأداة<input dir="rtl" value={f.ar_name} onChange={e=>set('ar_name',e.target.value)}/></label><label>الوصف المختصر<input dir="rtl" value={f.ar_short_description} onChange={e=>set('ar_short_description',e.target.value)}/></label><label style={{gridColumn:'1/-1'}}>الوصف<textarea dir="rtl" rows={8} value={f.ar_description} onChange={e=>set('ar_description',e.target.value)}/></label><label>عنوان SEO<textarea dir="rtl" rows={2} value={f.ar_seo_title} onChange={e=>set('ar_seo_title',e.target.value)}/></label><label>وصف SEO<textarea dir="rtl" rows={2} value={f.ar_seo_description} onChange={e=>set('ar_seo_description',e.target.value)}/></label><label style={{gridColumn:'1/-1'}}>الأسئلة الشائعة FAQ (JSON اختياري)<textarea dir="rtl" rows={5} placeholder='[{"question":"ما هي الأداة؟","answer":"..."}]' value={f.ar_faq} onChange={e=>set('ar_faq',e.target.value)}/></label></div></section>{error&&<p style={{color:'#fb7185'}}>{error}</p>}<button className="btn btn-primary" style={{marginTop:20}} disabled={categoriesLoading||cats.length===0}>Create tool / إنشاء الأداة</button></form></main>
 }

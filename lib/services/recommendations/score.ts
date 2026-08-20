@@ -1,54 +1,69 @@
 import type { FinderIntent, ToolRecord, Recommendation } from '../ai-finder/types';
+import { checkHardConstraints } from '../ai-finder/hard-constraints';
 
-const weights = { relevance:.30, features:.20, price:.15, rating:.10, popularity:.10, freshness:.05, reliability:.05, conversion:.05 } as const;
-
-function norm(value:number) { return Math.max(0, Math.min(1, value)); }
-function textTokens(input:string) { return new Set(input.toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean)); }
-function lexical(intent:FinderIntent, tool:ToolRecord) {
-  const tokens = textTokens([intent.useCase,intent.subcategory,...(intent.features||[]),...(intent.constraints||[])].filter(Boolean).join(' '));
-  const corpus = textTokens([tool.name,tool.short_description,tool.description,...tool.use_cases,...tool.features.map(f=>f.name),...tool.features.map(f=>f.slug)].join(' '));
-  if (!tokens.size) return 0.5;
-  let hits=0; tokens.forEach(t=>{if(corpus.has(t))hits++;}); return hits/tokens.size;
+const weights = { intent: .30, features: .20, budget: .15, quality: .10, platform: .07, experience: .05, freshness: .05, reliability: .08 } as const;
+const conversion = .5; // neutral until first-party conversion data is available; never dominates ranking
+function norm(value: number) { return Math.max(0, Math.min(1, value)); }
+function tokens(input: string) { return new Set(input.toLowerCase().split(/[^\p{L}\p{N}-]+/u).filter(Boolean)); }
+function intentRelevance(intent: FinderIntent, tool: ToolRecord, semanticScore = 0, keywordScore = 0) {
+  const requested = [intent.useCase, intent.subcategory, ...(intent.features || []), ...(intent.constraints || [])].filter(Boolean).join(' ');
+  const corpus = [tool.name, tool.short_description, tool.description, ...tool.use_cases, ...tool.features.map(f => `${f.name} ${f.slug}`), tool.category?.name, tool.category?.slug].filter(Boolean).join(' ');
+  const wanted = tokens(requested); const available = tokens(corpus);
+  const lexical = wanted.size ? [...wanted].filter(t => available.has(t)).length / wanted.size : .5;
+  const category = intent.category && tool.category?.slug === intent.category ? 1 : intent.category ? .35 : .5;
+  return norm((semanticScore * .30) + (keywordScore * .20) + (lexical * .35) + (category * .15));
 }
-function featureFit(intent:FinderIntent, tool:ToolRecord) {
-  const wanted = (intent.features||[]).map(x=>x.toLowerCase().replace(/\s+/g,'-'));
-  if (!wanted.length) return .5;
-  const have = new Set(tool.features.flatMap(f=>[f.slug.toLowerCase(),f.name.toLowerCase().replace(/\s+/g,'-')]));
-  return wanted.filter(x=>have.has(x)||have.has(x.replace('no-watermark','no-watermark'))).length/wanted.length;
+function featureFit(intent: FinderIntent, tool: ToolRecord) {
+  const wanted = (intent.features || []).map(x => x.toLowerCase().replace(/\s+/g, '-'));
+  if (!wanted.length) return .6;
+  const have = new Set(tool.features.flatMap(f => [f.slug.toLowerCase(), f.name.toLowerCase().replace(/\s+/g, '-') ]));
+  const hits = wanted.filter(x => have.has(x) || (x === 'no-watermark' && have.has('watermark-free')));
+  return hits.length / wanted.length;
 }
-function priceFit(intent:FinderIntent, tool:ToolRecord) {
-  if (!intent.budget || intent.budget==='any') return .5;
-  if (intent.budget==='free') return tool.pricing_type==='free' || tool.pricing_plans.some(p=>p.is_free) ? 1 : 0;
-  if (intent.budget==='freemium') return ['free','freemium','free_trial'].includes(tool.pricing_type) ? 1 : .25;
-  return ['paid','contact_sales'].includes(tool.pricing_type) ? 1 : .5;
+function budgetFit(intent: FinderIntent, tool: ToolRecord) {
+  if (!intent.budget || intent.budget === 'any') return .6;
+  const free = tool.pricing_type === 'free' || tool.pricing_plans.some(p => p.is_free);
+  if (intent.budget === 'free') return free ? 1 : 0;
+  if (intent.budget === 'freemium') return free || tool.pricing_type === 'freemium' || tool.pricing_type === 'free_trial' ? 1 : .2;
+  return ['paid', 'contact_sales'].includes(tool.pricing_type) ? 1 : .5;
 }
-function freshness(tool:ToolRecord) { if (!tool.last_verified_at) return .25; const days=(Date.now()-new Date(tool.last_verified_at).getTime())/86400000; return norm(1-days/180); }
-function reliability(tool:ToolRecord) { return norm(((tool.health_score??50)/100)*.7 + (tool.verified?.3:0)); }
-
-export function calculateRecommendationScore(intent:FinderIntent, tool:ToolRecord, semanticScore=0, keywordScore=0) {
-  const relevance = norm(semanticScore*.65 + keywordScore*.35);
-  const features = featureFit(intent,tool);
-  const price = priceFit(intent,tool);
-  const rating = tool.rating ? norm(tool.rating/5) : .5;
-  const popularity = norm(Math.log10((tool.review_count||0)+1)/4);
-  const fresh = freshness(tool);
-  const reliable = reliability(tool);
-  const conversion = .5; // neutral until first-party conversion data is available; never dominates ranking
-  const score = 100*(relevance*weights.relevance + features*weights.features + price*weights.price + rating*weights.rating + popularity*weights.popularity + fresh*weights.freshness + reliable*weights.reliability + conversion*weights.conversion);
-  return Math.round(score*10)/10;
+function platformFit(intent: FinderIntent, tool: ToolRecord) {
+  if (!intent.platform?.length) return .6;
+  const corpus = tokens([tool.short_description, tool.description, ...tool.use_cases, ...tool.features.map(f => f.name)].join(' '));
+  const hits = intent.platform.filter(p => corpus.has(p.toLowerCase()));
+  return hits.length ? hits.length / intent.platform.length : .25;
 }
-
-export function explainMatch(intent:FinderIntent, tool:ToolRecord): { why:string[]; limitations:string[] } {
-  const wanted = new Set((intent.features||[]).map(x=>x.toLowerCase().replace(/\s+/g,'-')));
-  const why = tool.features.filter(f=>wanted.has(f.slug.toLowerCase()) || wanted.has(f.name.toLowerCase().replace(/\s+/g,'-'))).map(f=>`Supports ${f.name}`);
-  if (intent.budget==='free' && (tool.pricing_type==='free'||tool.pricing_plans.some(p=>p.is_free))) why.push('Has a free option');
-  if (intent.category && tool.category?.slug===intent.category) why.push(`Matches ${tool.category.name}`);
-  if (intent.useCase && tool.use_cases.some(x=>x.toLowerCase().includes(intent.useCase!.toLowerCase()))) why.push(`Suitable for ${intent.useCase}`);
+function experienceFit(intent: FinderIntent, tool: ToolRecord) {
+  if (!intent.experienceLevel) return .6;
+  const corpus = `${tool.short_description} ${tool.description} ${tool.use_cases.join(' ')}`.toLowerCase();
+  if (intent.experienceLevel === 'beginner') return /easy|simple|beginner|سهل|بسيط/.test(corpus) ? 1 : .55;
+  if (intent.experienceLevel === 'advanced') return /advanced|professional|pro|api|متقدم|محترف/.test(corpus) ? 1 : .55;
+  return .65;
+}
+function freshness(tool: ToolRecord) { if (!tool.last_verified_at) return .25; const days = (Date.now() - new Date(tool.last_verified_at).getTime()) / 86400000; return norm(1 - days / 180); }
+function reliability(tool: ToolRecord) { return norm(((tool.health_score ?? 50) / 100) * .7 + (tool.verified ? .3 : 0)); }
+function quality(tool: ToolRecord) { return tool.rating ? norm(tool.rating / 5) : .5; }
+function popularity(tool: ToolRecord) { return norm(Math.log10((tool.review_count || 0) + 1) / 4); }
+export function calculateRecommendationScore(intent: FinderIntent, tool: ToolRecord, semanticScore = 0, keywordScore = 0) {
+  const qualitySignal = norm(quality(tool) * .8 + popularity(tool) * .2);
+  const conversionSignal = conversion * .0;
+  return Math.round(100 * (intentRelevance(intent, tool, semanticScore, keywordScore) * weights.intent + featureFit(intent, tool) * weights.features + budgetFit(intent, tool) * weights.budget + qualitySignal * weights.quality + platformFit(intent, tool) * weights.platform + experienceFit(intent, tool) * weights.experience + freshness(tool) * weights.freshness + reliability(tool) * weights.reliability + conversionSignal) * 10) / 10;
+}
+export function explainMatch(intent: FinderIntent, tool: ToolRecord): { why: string[]; limitations: string[] } {
+  const wanted = new Set((intent.features || []).map(x => x.toLowerCase().replace(/\s+/g, '-'))); const why: string[] = [];
+  tool.features.filter(f => wanted.has(f.slug.toLowerCase()) || wanted.has(f.name.toLowerCase().replace(/\s+/g, '-'))).slice(0, 3).forEach(f => why.push(`Supports ${f.name}`));
+  if (intent.budget === 'free' && (tool.pricing_type === 'free' || tool.pricing_plans.some(p => p.is_free))) why.push('Has a free option');
+  if (intent.category && tool.category?.slug === intent.category) why.push(`Matches ${tool.category.name}`);
+  if (intent.platform?.length) why.push(`Relevant to ${intent.platform.join(', ')}`);
+  if (intent.experienceLevel === 'beginner') why.push('Suitable for beginners');
   if (tool.verified) why.push('Verified by the platform');
-  const limitations = tool.cons.slice(0,3);
-  return { why:why.slice(0,5), limitations };
+  if (tool.last_verified_at) why.push('Recently verified');
+  return { why: why.slice(0, 6), limitations: tool.cons.slice(0, 3) };
 }
-
-export function rankRecommendations(intent:FinderIntent, candidates:Array<{tool:ToolRecord;semanticScore:number;keywordScore:number}>): Recommendation[] {
-  return candidates.map(x=>({ tool:x.tool, score:calculateRecommendationScore(intent,x.tool,x.semanticScore,x.keywordScore), semanticScore:x.semanticScore, keywordScore:x.keywordScore, ...explainMatch(intent,x.tool) })).sort((a,b)=>b.score-a.score);
+export function rankRecommendations(intent: FinderIntent, candidates: Array<{ tool: ToolRecord; semanticScore: number; keywordScore: number }>): Recommendation[] {
+  return candidates.flatMap(x => {
+    const gate = checkHardConstraints(x.tool as unknown as Record<string, unknown>, intent);
+    if (!gate.eligible) return [];
+    return [{ tool: x.tool, score: calculateRecommendationScore(intent, x.tool, x.semanticScore, x.keywordScore), semanticScore: x.semanticScore, keywordScore: x.keywordScore, ...explainMatch(intent, x.tool) }];
+  }).sort((a, b) => b.score - a.score);
 }
