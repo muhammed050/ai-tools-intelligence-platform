@@ -5,6 +5,8 @@ import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
+const PRODUCTION_SITE_URL = 'https://eldevo.com'
+
 function messageFor(error: string) {
   if (error === 'access_denied') return 'Google sign-in was cancelled. You can try again or use email sign-in.'
   if (error === 'invalid_request') return 'Google sign-in is not configured correctly. Please contact the site administrator.'
@@ -15,6 +17,13 @@ function messageFor(error: string) {
   if (error.includes('Email not confirmed')) return 'Please confirm your email before signing in.'
   if (error.includes('authentication is not configured')) return 'Authentication is not configured on this deployment. Please contact the site administrator.'
   return 'Unable to sign in. Please check your details and try again.'
+}
+
+function getOAuthCallbackUrl() {
+  if (process.env.NODE_ENV === 'production') {
+    return `${PRODUCTION_SITE_URL}/auth/callback`
+  }
+  return `${window.location.origin}/auth/callback`
 }
 
 function SignInForm() {
@@ -41,7 +50,10 @@ function SignInForm() {
   async function google() {
     setError(''); setGoogleLoading(true)
     try {
-      const { error } = await createClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } })
+      const { error } = await createClient().auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: getOAuthCallbackUrl() },
+      })
       if (error) setError('Google sign-in is unavailable right now. Please try email sign-in.')
     } catch (err) {
       console.error('Google sign-in failed', err)
