@@ -10,5 +10,5 @@ export function LanguageSwitcher({ locale = 'en' }: { locale?: 'en' | 'ar' }) {
     ? pathname.replace(/^\/(ar|en)(?=\/|$)/, `/${targetLocale}`)
     : `/${targetLocale}${pathname === '/' ? '' : pathname}`;
 
-  return <Link href={targetPath} hrefLang={targetLocale}>{targetLocale === 'ar' ? 'العربية' : 'English'}</Link>;
+  return <Link href={targetPath as any} hrefLang={targetLocale}>{targetLocale === 'ar' ? 'العربية' : 'English'}</Link>;
 }
