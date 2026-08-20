@@ -1,25 +1,27 @@
 'use client'
 
-import Link from 'next/link'
-import type { Route } from 'next'
-import { usePathname } from 'next/navigation'
-
-function localePath(pathname: string, locale: 'en' | 'ar') {
-  const clean = pathname.replace(/^\/(ar|en)(?=\/|$)/, '') || '/'
-  return (locale === 'en' ? clean : `/ar${clean === '/' ? '' : clean}`) as Route
-}
+import { Languages } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export function LanguageSwitcher({ locale }: { locale: 'en' | 'ar' }) {
-  const pathname = usePathname() || '/'
+  const router = useRouter()
   const nextLocale = locale === 'ar' ? 'en' : 'ar'
+
+  function switchLanguage() {
+    document.cookie = `eldevo_locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`
+    router.refresh()
+  }
+
   return (
-    <Link
-      href={localePath(pathname, nextLocale)}
-      className="btn btn-secondary"
-      aria-label={nextLocale === 'ar' ? 'Switch to Arabic' : 'Switch to English'}
-      style={{ minHeight: 36, padding: '7px 10px', fontSize: 12 }}
+    <button
+      type="button"
+      onClick={switchLanguage}
+      className="language-switcher"
+      aria-label={nextLocale === 'ar' ? 'التبديل إلى العربية' : 'Switch to English'}
+      title={nextLocale === 'ar' ? 'العربية' : 'English'}
     >
-      {nextLocale === 'ar' ? 'العربية' : 'English'}
-    </Link>
+      <Languages size={16} />
+      <span>{nextLocale === 'ar' ? 'العربية' : 'English'}</span>
+    </button>
   )
 }
