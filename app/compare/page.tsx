@@ -3,9 +3,20 @@ import { GitCompareArrows } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ComparePicker } from '@/components/compare-picker'
 
-export const metadata: Metadata = { title: 'Compare AI Tools', description: 'Compare two to four AI tools by pricing, ratings, capabilities, platforms and best use cases.', alternates: { canonical: '/compare' } }
-
 type SearchParams = { tool?: string | string[] }
+const title = 'Compare AI Tools'
+const description = 'Compare two to four AI tools by pricing, ratings, capabilities, platforms and best use cases.'
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
+  const params = await searchParams
+  const hasSelection = Boolean(params.tool)
+  return {
+    title,
+    description,
+    alternates: { canonical: '/compare' },
+    robots: hasSelection ? { index: false, follow: true } : { index: true, follow: true },
+  }
+}
 
 export default async function Compare({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams
