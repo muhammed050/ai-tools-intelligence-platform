@@ -2,4 +2,51 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireEditor } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-export default async function Tools(){try{await requireEditor()}catch{redirect('/auth/sign-in')}const{data}=await(await createClient()).from('tools').select('id,name,slug,status,verified,featured,updated_at').order('updated_at',{ascending:false});return <main className="container" style={{padding:'55px 0'}}><div style={{display:'flex',justifyContent:'space-between'}}><h1>Tools</h1><Link className="btn btn-primary" href="/admin/tools/new">Add tool</Link></div><div className="card" style={{marginTop:20,overflow:'auto'}}><table style={{width:'100%'}}><thead><tr><th align="left">Name</th><th>Status</th><th>Verified</th><th>Featured</th><th></th></tr></thead><tbody>{(data??[]).map(t=><tr key={t.id}><td style={{padding:16}}>{t.name}</td><td>{t.status}</td><td>{t.verified?'Yes':'No'}</td><td>{t.featured?'Yes':'No'}</td><td><Link href={`/admin/tools/${t.id}`} className="btn btn-secondary">Edit</Link></td></tr>)}</tbody></table></div></main>}
+
+export default async function Tools() {
+  try {
+    await requireEditor()
+  } catch {
+    redirect('/auth/sign-in')
+  }
+
+  const { data } = await (await createClient())
+    .from('tools')
+    .select('id,name,slug,status,verified,featured,updated_at')
+    .order('updated_at', { ascending: false })
+
+  return (
+    <main className="container" style={{ padding: '55px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h1>Tools</h1>
+          <p style={{ marginTop: 8, opacity: 0.7 }}>Manage your catalog or add many tools at once.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Link className="btn btn-secondary" href="/admin/tools/import">Import Tools</Link>
+          <Link className="btn btn-secondary" href="/api/admin/tools/export?format=xlsx">Export Tools</Link>
+          <Link className="btn btn-primary" href="/admin/tools/new">Add Tool</Link>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 20, overflow: 'auto' }}>
+        <table style={{ width: '100%' }}>
+          <thead>
+            <tr><th align="left">Name</th><th>Status</th><th>Verified</th><th>Featured</th><th /></tr>
+          </thead>
+          <tbody>
+            {(data ?? []).map(t => (
+              <tr key={t.id}>
+                <td style={{ padding: 16 }}>{t.name}</td>
+                <td>{t.status}</td>
+                <td>{t.verified ? 'Yes' : 'No'}</td>
+                <td>{t.featured ? 'Yes' : 'No'}</td>
+                <td><Link href={`/admin/tools/${t.id}`} className="btn btn-secondary">Edit</Link></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  )
+}
