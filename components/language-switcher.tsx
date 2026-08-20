@@ -8,8 +8,9 @@ export function LanguageSwitcher({ locale }: { locale: 'en' | 'ar' }) {
   const nextLocale = locale === 'ar' ? 'en' : 'ar'
 
   function switchLanguage() {
-    document.cookie = `eldevo_locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`
+    document.cookie = `eldevo_locale=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`
     router.refresh()
+    window.location.reload()
   }
 
   return (
