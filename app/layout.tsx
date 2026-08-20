@@ -1,5 +1,6 @@
 import './globals.css'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { cookies } from 'next/headers'
 import { ArrowRight, BookOpen, Grid2X2, GitCompareArrows, ShieldCheck, Sparkles } from 'lucide-react'
 import { getProfile, getUser } from '@/lib/auth'
@@ -26,7 +27,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const t = getDictionary(locale)
   const [user, profile] = await Promise.all([getUser(), getProfile()])
   const prefix = locale === 'ar' ? '/ar' : ''
-  const localized = (path: string) => `${prefix}${path === '/' ? '' : path}` || '/'
+  const localized = (path: string) => (`${prefix}${path === '/' ? '' : path}` || '/') as Route
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
