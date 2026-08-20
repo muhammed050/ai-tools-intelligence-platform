@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (!allowed) return NextResponse.json({ error: user ? 'Daily search limit reached. Please try again tomorrow.' : 'Hourly search limit reached. Please sign in or try again later.' }, { status: 429, headers: { 'Retry-After': String(windowSeconds) } });
 
     const aiResult = await extractAIIntent(body.query);
-    const { intent, source } = aiResult.source === 'deterministic-fallback' ? extractIntent(body.query) : aiResult;
+    const { intent } = aiResult.source === 'deterministic-fallback' ? extractIntent(body.query) : aiResult;
     const candidates = await hybridSearch(body.query, intent, 40); const ranked = rankRecommendations(intent, candidates); const top = ranked.slice(0, 12); const aiExplanation = buildExplanation(top, body.locale);
     const localizeItems = (items: any[]) => items.map(item => ({ ...item, tool: localizedTool(item.tool, body.locale) }));
     const freeItems = top.filter(x => x.tool.pricing_type === 'free' || x.tool.pricing_plans?.some((p: any) => p.is_free)).slice(0, 4);
@@ -29,6 +29,6 @@ export async function POST(request: Request) {
     const categories = [{ key: 'best', label: body.locale === 'ar' ? 'أفضل التطابقات' : 'Best Matches', items: localizeItems(top.slice(0, 6)) }, { key: 'free', label: body.locale === 'ar' ? 'أفضل الخيارات المجانية' : 'Best Free Options', items: localizeItems(freeItems) }, { key: 'alternative', label: body.locale === 'ar' ? 'بدائل قوية' : 'Strong Alternatives', items: localizeItems(alternativeItems) }, { key: 'premium', label: body.locale === 'ar' ? 'أفضل الخيارات المدفوعة' : 'Best Premium Options', items: localizeItems(premiumItems) }].filter(group => group.items.length);
     const seen = new Set<string>(); const stack = ranked.filter(item => { const category = item.tool.category?.slug || item.tool.category?.name || 'other'; if (seen.has(category)) return false; seen.add(category); return true; }).slice(0, 8).map(item => ({ key: item.tool.category?.slug || 'other', label: body.locale === 'ar' ? (item.tool.category?.name_ar || item.tool.category?.name || 'أداة ذكاء اصطناعي') : (item.tool.category?.name || 'AI tool'), tool: localizedTool(item.tool, body.locale), score: item.score, why: item.why?.[0] || (body.locale === 'ar' ? 'مطابقة قوية بناءً على طلبك.' : 'Strong match for your request.') }));
     const sessionHash = createHash('sha256').update(key).digest('hex'); const { error: logError } = await db.from('search_logs').insert({ user_id: user?.id ?? null, query: body.query, intent, filters: intent, session_hash: sessionHash, result_tool_ids: top.map(x => x.tool.id) }); if (logError) console.warn('Search log skipped:', logError.message);
-    return NextResponse.json({ query: body.query, locale: body.locale, intent, source, aiExplanation, results: categories, stack, total: top.length });
+    return NextResponse.json({ query: body.query, locale: body.locale, intent, source: aiResult.source, provider: aiResult.provider || null, model: aiResult.model || null, aiError: aiResult.error || null, aiExplanation, results: categories, stack, total: top.length });
   } catch (error) { if (error instanceof z.ZodError) return NextResponse.json({ error: 'Invalid search request' }, { status: 400 }); console.error(error); return NextResponse.json({ error: 'Unable to complete the search right now.' }, { status: 500 }); }
 }
