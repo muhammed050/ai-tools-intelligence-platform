@@ -14,8 +14,9 @@ export function LanguageSwitcher({ locale }: { locale: 'en' | 'ar' }) {
   return (
     <Link
       href={localePath(pathname, nextLocale)}
-      className="language-switcher"
+      className="btn btn-secondary"
       aria-label={nextLocale === 'ar' ? 'Switch to Arabic' : 'Switch to English'}
+      style={{ minHeight: 36, padding: '7px 10px', fontSize: 12 }}
     >
       {nextLocale === 'ar' ? 'العربية' : 'English'}
     </Link>
