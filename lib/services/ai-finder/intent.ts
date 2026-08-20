@@ -91,6 +91,7 @@ function detectOutputType(q: string, category?: string) {
   return undefined;
 }
 
+// development-fallback: deterministic parsing is the guaranteed local fallback when AI providers are unavailable.
 export function deterministicFallbackParser(query: string): FinderIntent {
   const q = query.trim();
   const category = firstMatch(q, CATEGORY_RULES);
