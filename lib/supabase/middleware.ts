@@ -2,11 +2,16 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { LOCALE_COOKIE, normalizeLocale } from '@/lib/i18n'
 
+function detectBrowserLocale(request: NextRequest) {
+  const header = request.headers.get('accept-language') || ''
+  return /(?:^|,)\s*ar(?:-|;|,|$)/i.test(header) ? 'ar' as const : 'en' as const
+}
+
 export async function updateSession(request: NextRequest) {
   const originalPathname = request.nextUrl.pathname
   const localeMatch = originalPathname.match(/^\/(ar|en)(?=\/|$)/)
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value
-  const locale = normalizeLocale(localeMatch?.[1] ?? cookieLocale)
+  const locale = normalizeLocale(localeMatch?.[1] ?? cookieLocale ?? detectBrowserLocale(request))
   const pathname = originalPathname.replace(/^\/(ar|en)(?=\/|$)/, '') || '/'
 
   const requestHeaders = new Headers(request.headers)
@@ -43,29 +48,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isAdmin) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    const adminOnly =
-      pathname === '/admin' ||
-      pathname.startsWith('/admin/users') ||
-      pathname.startsWith('/admin/analytics') ||
-      pathname.startsWith('/admin/ai') ||
-      pathname.startsWith('/admin/seo')
-
-    const editorArea =
-      pathname.startsWith('/admin/tools') ||
-      pathname.startsWith('/admin/reviews')
-
-    const allowed = adminOnly
-      ? profile?.role === 'admin'
-      : editorArea
-        ? ['admin', 'editor'].includes(profile?.role ?? '')
-        : profile?.role === 'admin'
-
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    const adminOnly = pathname === '/admin' || pathname.startsWith('/admin/users') || pathname.startsWith('/admin/analytics') || pathname.startsWith('/admin/ai') || pathname.startsWith('/admin/seo')
+    const editorArea = pathname.startsWith('/admin/tools') || pathname.startsWith('/admin/reviews')
+    const allowed = adminOnly ? profile?.role === 'admin' : editorArea ? ['admin', 'editor'].includes(profile?.role ?? '') : profile?.role === 'admin'
     if (!allowed) {
       const url = request.nextUrl.clone()
       url.pathname = `${locale === 'ar' ? '/ar' : ''}/dashboard`
@@ -82,8 +68,6 @@ function rewriteWithCookies(request: NextRequest, pathname: string, headers: Hea
   const rewriteUrl = request.nextUrl.clone()
   rewriteUrl.pathname = pathname
   const rewritten = NextResponse.rewrite(rewriteUrl, { request: { headers } })
-  source.cookies.getAll().forEach((cookie) => {
-    rewritten.cookies.set(cookie)
-  })
+  source.cookies.getAll().forEach((cookie) => rewritten.cookies.set(cookie))
   return rewritten
 }
