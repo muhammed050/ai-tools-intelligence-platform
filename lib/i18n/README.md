@@ -1,0 +1,1 @@
+Eldevo supports English and Arabic. Arabic uses RTL direction.
