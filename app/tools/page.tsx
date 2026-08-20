@@ -1,10 +1,28 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { ArrowRight, CheckCircle2, ExternalLink, Search, Sparkles } from 'lucide-react'
 import { getDictionary, normalizeLocale, LOCALE_COOKIE } from '@/lib/i18n'
 
-export const metadata = { title: 'AI Tools Directory', description: 'Browse and compare curated AI tools for writing, coding, image, video, voice, research and business.' }
+const baseMetadata = {
+  title: 'AI Tools Directory',
+  description: 'Browse and compare curated AI tools for writing, coding, image, video, voice, research and business.',
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
+  const params = await searchParams
+  const hasFilters = Boolean(params.q || params.category || params.pricing || params.rating || params.platform || params.verified || params.sort)
+  if (hasFilters) {
+    return {
+      ...baseMetadata,
+      robots: { index: false, follow: true },
+      alternates: { canonical: '/tools' },
+    }
+  }
+  return { ...baseMetadata, alternates: { canonical: '/tools' }, robots: { index: true, follow: true } }
+}
+
 type SearchParams = { q?: string; category?: string; pricing?: string; rating?: string; platform?: string; verified?: string; sort?: string }
 const pricingOptions = ['free', 'freemium', 'paid', 'free_trial', 'contact_sales']
 function sanitizeSearchQuery(value: string) { return value.replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim() }
