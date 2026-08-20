@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import type { Route } from 'next'
 import { usePathname } from 'next/navigation'
 
 function localePath(pathname: string, locale: 'en' | 'ar') {
   const clean = pathname.replace(/^\/(ar|en)(?=\/|$)/, '') || '/'
-  return locale === 'en' ? clean : `/ar${clean === '/' ? '' : clean}`
+  return (locale === 'en' ? clean : `/ar${clean === '/' ? '' : clean}`) as Route
 }
 
 export function LanguageSwitcher({ locale }: { locale: 'en' | 'ar' }) {
