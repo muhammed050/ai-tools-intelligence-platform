@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSiteUrl } from '@/lib/site'
 
 const PAGE_SIZE = 45_000
-const staticPaths = ['', '/ai-finder', '/tools', '/categories', '/compare', '/blog', '/about', '/contact', '/privacy', '/terms', '/submit-tool', '/affiliate-disclosure', '/best-ai-video-tools', '/best-free-ai-video-tools']
+const staticPaths = ['', '/ai-finder', '/tools', '/categories', '/compare', '/blog', '/about', '/contact', '/privacy', '/terms', '/submit-tool', '/affiliate-disclosure', '/best-ai-tools', '/best-ai-video-tools', '/best-free-ai-video-tools', '/best-ai-tools-for-youtube', '/best-ai-tools-for-tiktok', '/best-free-ai-tools', '/chatgpt-alternatives']
 
 function localizedUrl(base: string, path: string, locale: 'en' | 'ar') {
   if (locale === 'en') return `${base}${path || '/'}`
