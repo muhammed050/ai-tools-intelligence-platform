@@ -16,7 +16,7 @@ export async function updateSession(request: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!supabaseUrl || !supabaseKey) return response
+  if (!supabaseUrl || !supabaseKey) return localeMatch ? rewriteWithCookies(request, pathname, requestHeaders, response) : response
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
@@ -73,11 +73,16 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (localeMatch) {
-    const rewriteUrl = request.nextUrl.clone()
-    rewriteUrl.pathname = pathname
-    return NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
-  }
-
+  if (localeMatch) return rewriteWithCookies(request, pathname, requestHeaders, response)
   return response
+}
+
+function rewriteWithCookies(request: NextRequest, pathname: string, headers: Headers, source: NextResponse) {
+  const rewriteUrl = request.nextUrl.clone()
+  rewriteUrl.pathname = pathname
+  const rewritten = NextResponse.rewrite(rewriteUrl, { request: { headers } })
+  source.cookies.getAll().forEach((cookie) => {
+    rewritten.cookies.set(cookie)
+  })
+  return rewritten
 }
