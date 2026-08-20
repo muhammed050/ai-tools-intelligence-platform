@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import type { Route } from 'next'
 import { FileText, Grid2X2, Search, Wrench, X } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 type Results = { tools: { name: string; slug: string; short_description: string | null }[]; categories: { name: string; slug: string; description: string | null }[]; articles: { title: string; slug: string; excerpt: string | null }[] }
 const emptyResults: Results = { tools: [], categories: [], articles: [] }
-type Suggestion = { href: string; title: string; description: string | null; kind: 'Tool' | 'Category' | 'Guide' }
+type Suggestion = { href: Route; title: string; description: string | null; kind: 'Tool' | 'Category' | 'Guide' }
 
 export function GlobalSearch() {
   const [query, setQuery] = useState('')
@@ -46,9 +47,9 @@ export function GlobalSearch() {
   }, [])
 
   const suggestions = useMemo<Suggestion[]>(() => [
-    ...results.tools.map((item) => ({ href: `/tools/${item.slug}`, title: item.name, description: item.short_description, kind: 'Tool' as const })),
-    ...results.categories.map((item) => ({ href: `/categories/${item.slug}`, title: item.name, description: item.description, kind: 'Category' as const })),
-    ...results.articles.map((item) => ({ href: `/blog/${item.slug}`, title: item.title, description: item.excerpt, kind: 'Guide' as const }))
+    ...results.tools.map((item) => ({ href: `/tools/${item.slug}` as Route, title: item.name, description: item.short_description, kind: 'Tool' as const })),
+    ...results.categories.map((item) => ({ href: `/categories/${item.slug}` as Route, title: item.name, description: item.description, kind: 'Category' as const })),
+    ...results.articles.map((item) => ({ href: `/blog/${item.slug}` as Route, title: item.title, description: item.excerpt, kind: 'Guide' as const }))
   ], [results])
 
   const submit = (event: FormEvent) => {
