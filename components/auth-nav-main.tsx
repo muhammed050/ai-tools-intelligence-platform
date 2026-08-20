@@ -5,16 +5,46 @@ import type { Route } from 'next'
 import { createClient } from '@/lib/supabase/browser'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Bookmark, FolderHeart, LayoutDashboard, LogOut, Shield, UserRound } from 'lucide-react'
+import { ChevronDown, LogIn, LogOut, UserRound } from 'lucide-react'
 import { getDictionary } from '@/lib/i18n'
 
 export function AuthNavMain({ userEmail, role, locale = 'en' }: { userEmail?: string | null; role?: string | null; locale?: 'en' | 'ar' }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
   const t = getDictionary(locale).auth
   const prefix = locale === 'ar' ? '/ar' : ''
   const href = (path: string) => `${prefix}${path}` as Route
-  async function logout() { setLoading(true); await createClient().auth.signOut(); router.push(href('/')); router.refresh() }
-  if (!userEmail) return <div style={{ display: 'flex', gap: 8 }}><Link className="btn btn-secondary" href={href('/auth/sign-in')}><UserRound size={15} /> {t.signIn}</Link><Link className="btn btn-primary" href={href('/auth/sign-up')}>{t.getStarted}</Link></div>
-  return <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}><Link className="btn btn-secondary" href={href('/favorites')}><Bookmark size={15} /> {t.favorites}</Link><Link className="btn btn-secondary" href={href('/collections')}><FolderHeart size={15} /> {t.collections}</Link><Link className="btn btn-secondary" href={href('/dashboard')}><LayoutDashboard size={15} /> {t.dashboard}</Link>{role === 'admin' && <Link className="btn btn-secondary" href={href('/admin')}><Shield size={15} /> {t.admin}</Link>}<button className="btn btn-secondary" onClick={logout} disabled={loading}><LogOut size={15} />{loading ? t.signingOut : t.logout}</button></div>
+
+  async function logout() {
+    setLoading(true)
+    await createClient().auth.signOut()
+    setOpen(false)
+    router.push(href('/'))
+    router.refresh()
+  }
+
+  if (!userEmail) {
+    return <Link className="header-login" href={href('/auth/sign-in')}><LogIn size={16} /> <span>{t.signIn}</span></Link>
+  }
+
+  return (
+    <div className="account-menu">
+      <button type="button" className="account-trigger" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
+        <span className="account-avatar"><UserRound size={15} /></span>
+        <span className="account-email">{userEmail.split('@')[0]}</span>
+        <ChevronDown size={15} />
+      </button>
+      {open && (
+        <div className="account-dropdown" role="menu">
+          <div className="account-email-full">{userEmail}</div>
+          <Link href={href('/dashboard')} onClick={() => setOpen(false)} role="menuitem">{t.dashboard}</Link>
+          <Link href={href('/favorites')} onClick={() => setOpen(false)} role="menuitem">{t.favorites}</Link>
+          <Link href={href('/collections')} onClick={() => setOpen(false)} role="menuitem">{t.collections}</Link>
+          {role === 'admin' && <Link href={href('/admin')} onClick={() => setOpen(false)} role="menuitem">{t.admin}</Link>}
+          <button type="button" onClick={logout} disabled={loading} role="menuitem"><LogOut size={15} /> {loading ? t.signingOut : t.logout}</button>
+        </div>
+      )}
+    </div>
+  )
 }
