@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { extractIntent } from '@/lib/services/ai-finder/intent';
 import { hybridSearch } from '@/lib/services/search/hybrid-search';
 import { rankRecommendations } from '@/lib/services/recommendations/score';
+import { explainRecommendations } from '@/lib/services/ai/recommendation-explainer';
 import { createClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
 
@@ -47,11 +48,12 @@ export async function POST(request:Request){
     const candidates=await hybridSearch(body.query,intent,40);
     const ranked=rankRecommendations(intent,candidates);
     const top=ranked.slice(0,12);
+    const aiExplanation=await explainRecommendations(intent,ranked,body.locale);
     const categories=[
-      {key:'best',label:'Best Match',items:top.slice(0,1)},
-      {key:'free',label:'Best Free Option',items:top.filter(x=>x.tool.pricing_type==='free'||x.tool.pricing_plans.some(p=>p.is_free)).slice(0,1)},
-      {key:'alternative',label:'Best Alternative',items:top.slice(1,2)},
-      {key:'premium',label:'Best Premium Option',items:top.filter(x=>['paid','contact_sales'].includes(x.tool.pricing_type)).slice(0,1)},
+      {key:'best',label:body.locale==='ar'?'أفضل تطابق':'Best Match',items:top.slice(0,1)},
+      {key:'free',label:body.locale==='ar'?'أفضل خيار مجاني':'Best Free Option',items:top.filter(x=>x.tool.pricing_type==='free'||x.tool.pricing_plans.some(p=>p.is_free)).slice(0,1)},
+      {key:'alternative',label:body.locale==='ar'?'أفضل بديل':'Best Alternative',items:top.slice(1,2)},
+      {key:'premium',label:body.locale==='ar'?'أفضل خيار مدفوع':'Best Premium Option',items:top.filter(x=>['paid','contact_sales'].includes(x.tool.pricing_type)).slice(0,1)},
     ].filter(x=>x.items.length).map(group=>({...group,items:group.items.map(item=>({...item,tool:localizedTool(item.tool,body.locale)}))}));
 
     const seen=new Set<string>();
@@ -70,7 +72,7 @@ export async function POST(request:Request){
 
     const sessionHash=createHash('sha256').update(key).digest('hex');
     await db.from('search_logs').insert({user_id:user?.id??null,query:body.query,intent,filters:intent,session_hash:sessionHash,result_tool_ids:top.map(x=>x.tool.id)});
-    return NextResponse.json({query:body.query,locale:body.locale,intent,source,results:categories,stack,total:top.length});
+    return NextResponse.json({query:body.query,locale:body.locale,intent,source,aiExplanation,results:categories,stack,total:top.length});
   }catch(error){
     if(error instanceof z.ZodError) return NextResponse.json({error:'Invalid search request'},{status:400});
     console.error(error); return NextResponse.json({error:'Unable to complete the search right now.'},{status:500});
