@@ -66,22 +66,55 @@ export function validateImportRows(rows: Row[], categories: Map<string, string>,
     const errors: string[] = []; const warnings: string[] = []
     const name = text(row.name, 120); const slug = text(row.slug, 120).toLowerCase(); const description = text(row.description, 10_000); const tagline = text(row.tagline, 280)
     const website_url = url(row.website_url, errors, 'website_url', true); const logo_url = url(row.logo_url, errors, 'logo_url'); const categoryName = text(row.category, 120).toLowerCase()
+    const pricing_type = text(row.pricing_type || 'freemium', 32).toLowerCase()
+    const status = text(row.status || 'draft', 32).toLowerCase()
+    const meta_title = text(row.meta_title, 70); const meta_description = text(row.meta_description, 170)
+    const keywords = array(row.keywords)
     if (name.length < 2) errors.push('name must be at least 2 characters')
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) errors.push('slug must use lowercase letters, numbers, and hyphens')
     if (description.length < 20) errors.push('description must be at least 20 characters')
     if (tagline.length < 10) errors.push('tagline must be at least 10 characters')
     if (!categories.has(categoryName)) errors.push('category does not exist')
-    const pricing_type = text(row.pricing_type || 'freemium', 32).toLowerCase()
     if (!pricingTypes.has(pricing_type)) errors.push('pricing_type is invalid')
-    const status = text(row.status || 'draft', 32).toLowerCase()
     if (!statuses.has(status)) errors.push('status is invalid')
+    if (status === 'published') {
+      if (!logo_url) errors.push('published tools require logo_url')
+      if (meta_title.length < 20) errors.push('published tools require meta_title (20+ characters)')
+      if (meta_description.length < 50) errors.push('published tools require meta_description (50+ characters)')
+      if (keywords.length < 2) errors.push('published tools require at least 2 SEO keywords')
+    }
     const ratingValue = text(row.rating, 20); const rating = ratingValue ? Number(ratingValue) : null
+    const reviewCountValue = text(row.review_count, 20); const review_count = reviewCountValue ? Number(reviewCountValue) : 0
     if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 5)) errors.push('rating must be between 0 and 5')
+    if (!Number.isInteger(review_count) || review_count < 0) errors.push('review_count must be a non-negative integer')
     if (existingSlugs.has(slug) || seenSlugs.has(slug)) errors.push('duplicate slug')
     if (website_url && (existingWebsites.has(website_url) || seenWebsites.has(website_url))) errors.push('duplicate website_url')
     if (slug) seenSlugs.add(slug); if (website_url) seenWebsites.add(website_url)
     for (const [key, value] of Object.entries(row)) if (formulaPrefix.test(String(value).trim())) warnings.push(`${key} started with a spreadsheet formula marker and was treated as text`)
-    const input = errors.length ? undefined : { name, slug, description, short_description: tagline, website_url, logo_url, category_id: categories.get(categoryName), pricing_type, status, verified: boolean(row.verified, errors, 'verified'), featured: boolean(row.featured, errors, 'featured'), rating, review_count: Number(text(row.review_count, 12) || 0), use_cases: array(row.use_cases), platforms: array(row.platforms), pros: array(row.pros), cons: array(row.cons), currency: 'USD', starting_price: null }
+    const input = errors.length ? undefined : {
+      name,
+      slug,
+      description,
+      short_description: tagline,
+      website_url,
+      logo_url,
+      category_id: categories.get(categoryName),
+      pricing_type,
+      status,
+      verified: boolean(row.verified, errors, 'verified'),
+      featured: boolean(row.featured, errors, 'featured'),
+      rating,
+      review_count,
+      use_cases: array(row.use_cases),
+      platforms: array(row.platforms),
+      pros: array(row.pros),
+      cons: array(row.cons),
+      currency: 'USD',
+      starting_price: null,
+      meta_title: meta_title || null,
+      meta_description: meta_description || null,
+      keywords,
+    }
     return { row: index + 2, input, errors, warnings }
   })
 }
