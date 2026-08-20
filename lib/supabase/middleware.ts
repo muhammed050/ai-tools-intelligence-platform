@@ -7,6 +7,10 @@ function detectBrowserLocale(request: NextRequest) {
   return /(?:^|,)\s*ar(?:-|;|,|$)/i.test(header) ? 'ar' as const : 'en' as const
 }
 
+function isLocalizedSeoRoute(pathname: string) {
+  return /^\/(tools|categories|blog)\/[^/]+(?:\/.*)?$/.test(pathname)
+}
+
 export async function updateSession(request: NextRequest) {
   const originalPathname = request.nextUrl.pathname
   const localeMatch = originalPathname.match(/^\/(ar|en)(?=\/|$)/)
@@ -17,13 +21,16 @@ export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-eldevo-locale', locale)
   requestHeaders.set('x-eldevo-pathname', pathname)
+  const existingCookie = requestHeaders.get('cookie') || ''
+  const localeCookie = `${LOCALE_COOKIE}=${locale}`
+  requestHeaders.set('cookie', existingCookie.split(';').filter((part) => !part.trim().startsWith(`${LOCALE_COOKIE}=`)).concat(localeCookie).join('; '))
 
   let response = NextResponse.next({ request: { headers: requestHeaders } })
   response.cookies.set(LOCALE_COOKIE, locale, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!supabaseUrl || !supabaseKey) return localeMatch ? rewriteWithCookies(request, pathname, requestHeaders, response) : response
+  if (!supabaseUrl || !supabaseKey) return localeMatch && !isLocalizedSeoRoute(pathname) ? rewriteWithCookies(request, pathname, requestHeaders, response) : response
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
@@ -61,7 +68,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (localeMatch) return rewriteWithCookies(request, pathname, requestHeaders, response)
+  if (localeMatch && !isLocalizedSeoRoute(pathname)) return rewriteWithCookies(request, pathname, requestHeaders, response)
   return response
 }
 
