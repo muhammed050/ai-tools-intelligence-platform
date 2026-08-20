@@ -21,29 +21,20 @@ export async function POST(request:Request){
     const body=bodySchema.parse(await request.json());
     const db=await createClient();
     const {data:{user}}=await db.auth.getUser();
-
-    // Anonymous users get a conservative hourly quota; authenticated users get a larger daily quota.
     const limit=user ? 100 : 10;
     const windowSeconds=user ? 86400 : 3600;
     const key=getRateLimitKey(request,user?.id);
-    const {data:allowed,error:rateLimitError}=await db.rpc('consume_rate_limit',{
-      p_key:key,
-      p_limit:limit,
-      p_window_seconds:windowSeconds,
-    });
+    const {data:allowed,error:rateLimitError}=await db.rpc('consume_rate_limit',{p_key:key,p_limit:limit,p_window_seconds:windowSeconds});
     if(rateLimitError){
       console.error('AI finder rate-limit error',rateLimitError);
       return NextResponse.json({error:'Search is temporarily unavailable.'},{status:503});
     }
     if(!allowed){
-      return NextResponse.json(
-        {error:user?'Daily search limit reached. Please try again tomorrow.':'Hourly search limit reached. Please sign in or try again later.'},
-        {status:429,headers:{'Retry-After':String(windowSeconds)}}
-      );
+      return NextResponse.json({error:user?'Daily search limit reached. Please try again tomorrow.':'Hourly search limit reached. Please sign in or try again later.'},{status:429,headers:{'Retry-After':String(windowSeconds)}});
     }
 
     const {intent,source}=await extractIntent(body.query);
-    const candidates=await hybridSearch(body.query,intent,30);
+    const candidates=await hybridSearch(body.query,intent,40);
     const ranked=rankRecommendations(intent,candidates);
     const top=ranked.slice(0,12);
     const categories=[
@@ -53,16 +44,24 @@ export async function POST(request:Request){
       {key:'premium',label:'Best Premium Option',items:top.filter(x=>['paid','contact_sales'].includes(x.tool.pricing_type)).slice(0,1)},
     ].filter(x=>x.items.length);
 
+    // Reuse the ranked directory results to build a practical AI Stack without another model call.
+    const seen=new Set<string>();
+    const stack=ranked.filter(item=>{
+      const category=item.tool.category?.slug || item.tool.category?.name || 'other';
+      if(seen.has(category)) return false;
+      seen.add(category);
+      return true;
+    }).slice(0,5).map(item=>({
+      key:item.tool.category?.slug || 'other',
+      label:item.tool.category?.name || 'AI tool',
+      tool:item.tool,
+      score:item.score,
+      why:item.why?.[0] || 'Strong match for your request.',
+    }));
+
     const sessionHash=createHash('sha256').update(key).digest('hex');
-    await db.from('search_logs').insert({
-      user_id:user?.id??null,
-      query:body.query,
-      intent,
-      filters:intent,
-      session_hash:sessionHash,
-      result_tool_ids:top.map(x=>x.tool.id),
-    });
-    return NextResponse.json({query:body.query,intent,source,results:categories,total:top.length});
+    await db.from('search_logs').insert({user_id:user?.id??null,query:body.query,intent,filters:intent,session_hash:sessionHash,result_tool_ids:top.map(x=>x.tool.id)});
+    return NextResponse.json({query:body.query,intent,source,results:categories,stack,total:top.length});
   }catch(error){
     if(error instanceof z.ZodError) return NextResponse.json({error:'Invalid search request'},{status:400});
     console.error(error); return NextResponse.json({error:'Unable to complete the search right now.'},{status:500});
