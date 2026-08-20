@@ -5,7 +5,8 @@ import { LOCALE_COOKIE, normalizeLocale } from '@/lib/i18n'
 export async function updateSession(request: NextRequest) {
   const originalPathname = request.nextUrl.pathname
   const localeMatch = originalPathname.match(/^\/(ar|en)(?=\/|$)/)
-  const locale = normalizeLocale(localeMatch?.[1])
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value
+  const locale = normalizeLocale(localeMatch?.[1] ?? cookieLocale)
   const pathname = originalPathname.replace(/^\/(ar|en)(?=\/|$)/, '') || '/'
 
   const requestHeaders = new Headers(request.headers)
