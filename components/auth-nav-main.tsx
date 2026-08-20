@@ -13,8 +13,7 @@ export function AuthNavMain({ userEmail, role, locale = 'en' }: { userEmail?: st
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const t = getDictionary(locale).auth
-  const prefix = locale === 'ar' ? '/ar' : ''
-  const href = (path: string) => `${prefix}${path}` as Route
+  const href = (path: string) => path as Route
 
   async function logout() {
     setLoading(true)
@@ -24,27 +23,7 @@ export function AuthNavMain({ userEmail, role, locale = 'en' }: { userEmail?: st
     router.refresh()
   }
 
-  if (!userEmail) {
-    return <Link className="header-login" href={href('/auth/sign-in')}><LogIn size={16} /> <span>{t.signIn}</span></Link>
-  }
+  if (!userEmail) return <Link className="header-login" href={href('/auth/sign-in')}><LogIn size={16} /> <span>{t.signIn}</span></Link>
 
-  return (
-    <div className="account-menu">
-      <button type="button" className="account-trigger" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
-        <span className="account-avatar"><UserRound size={15} /></span>
-        <span className="account-email">{userEmail.split('@')[0]}</span>
-        <ChevronDown size={15} />
-      </button>
-      {open && (
-        <div className="account-dropdown" role="menu">
-          <div className="account-email-full">{userEmail}</div>
-          <Link href={href('/dashboard')} onClick={() => setOpen(false)} role="menuitem">{t.dashboard}</Link>
-          <Link href={href('/favorites')} onClick={() => setOpen(false)} role="menuitem">{t.favorites}</Link>
-          <Link href={href('/collections')} onClick={() => setOpen(false)} role="menuitem">{t.collections}</Link>
-          {role === 'admin' && <Link href={href('/admin')} onClick={() => setOpen(false)} role="menuitem">{t.admin}</Link>}
-          <button type="button" onClick={logout} disabled={loading} role="menuitem"><LogOut size={15} /> {loading ? t.signingOut : t.logout}</button>
-        </div>
-      )}
-    </div>
-  )
+  return <div className="account-menu"><button type="button" className="account-trigger" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu"><span className="account-avatar"><UserRound size={15} /></span><span className="account-email">{userEmail.split('@')[0]}</span><ChevronDown size={15} /></button>{open && <div className="account-dropdown" role="menu"><div className="account-email-full">{userEmail}</div><Link href={href('/dashboard')} onClick={() => setOpen(false)} role="menuitem">{t.dashboard}</Link><Link href={href('/favorites')} onClick={() => setOpen(false)} role="menuitem">{t.favorites}</Link><Link href={href('/collections')} onClick={() => setOpen(false)} role="menuitem">{t.collections}</Link>{role === 'admin' && <Link href={href('/admin')} onClick={() => setOpen(false)} role="menuitem">{t.admin}</Link>}<button type="button" onClick={logout} disabled={loading} role="menuitem"><LogOut size={15} /> {loading ? t.signingOut : t.logout}</button></div>}</div>
 }
