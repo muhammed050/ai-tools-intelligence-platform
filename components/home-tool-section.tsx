@@ -5,11 +5,13 @@ import { FavoriteButton } from '@/components/favorite-button'
 type Locale = 'en' | 'ar'
 type Tool = { id: string; name: string; name_ar?: string | null; slug: string; short_description: string; short_description_ar?: string | null; rating: number | null; review_count: number; pricing_type: string | null; logo_url: string | null; verified: boolean; category: { name: string; name_ar?: string | null; slug: string } | { name: string; name_ar?: string | null; slug: string }[] | null }
 
-export function HomeToolSection({ eyebrow, title, tools, locale = 'en' }: { eyebrow: string; title: string; tools: Tool[]; locale?: Locale }) {
+type Props = { id?: string; eyebrow?: string; title: string; tools: Tool[]; locale?: Locale }
+
+export function HomeToolSection({ id, eyebrow, title, tools, locale = 'en' }: Props) {
   if (!tools.length) return null
   const ar = locale === 'ar'
-  return <section className="container" style={{ padding: '54px 0 0' }}>
-    <div className="section-head"><div><div className="eyebrow">{eyebrow}</div><h2>{title}</h2></div><Link className="btn btn-secondary" href="/tools">{ar ? 'عرض جميع الأدوات' : 'View directory'} <ArrowRight size={15} /></Link></div>
+  return <section id={id} className="container" style={{ padding: '54px 0 0' }}>
+    <div className="section-head"><div><div className="eyebrow">{eyebrow || (ar ? 'اختيارات Eldevo' : 'ELDEVO PICKS')}</div><h2>{title}</h2></div><Link className="btn btn-secondary" href="/tools">{ar ? 'عرض جميع الأدوات' : 'View directory'} <ArrowRight size={15} /></Link></div>
     <div className="tool-grid">{tools.map((tool) => {
       const category = Array.isArray(tool.category) ? tool.category[0] : tool.category
       const name = ar ? (tool.name_ar || tool.name) : tool.name
