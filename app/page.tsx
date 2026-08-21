@@ -62,7 +62,7 @@ export default async function Home() {
     <section className={styles.hero}>
       <div className={`container ${styles.heroInner}`}>
         <div className={styles.kicker}><Sparkles size={14} /> {ar ? 'دليل الذكاء الاصطناعي' : 'AI TOOL INTELLIGENCE'}</div>
-        <h1 className={styles.heroTitle}>{ar ? <>اكتشف الأداة المناسبة<br /><span>لأي مهمة.</span></> : <>Find the right AI tool<br /><span>for any job.</span>}</h1>
+        <h1 className={styles.heroTitle}>{ar ? 'اكتشف الأداة المناسبة' : 'Find the right AI tool'}<br /><span>{ar ? 'لأي مهمة.' : 'for any job.'}</span></h1>
         <p className={styles.heroLead}>{ar ? 'لا تبحث بين آلاف الأدوات. اكتب ما تريد إنجازه، ثم قارن الخيارات المناسبة في مكان واحد.' : 'Stop browsing endless lists. Tell us what you want to accomplish, then compare the tools that actually fit.'}</p>
         <div className={styles.finderWrap}><HomeFinder locale={locale} /></div>
         <div className={styles.heroActions}>
@@ -88,15 +88,17 @@ export default async function Home() {
       <div className={styles.searchCloud} style={{ marginTop: 22 }}>{intentSeeds.map((item) => <Link key={item.slug} className={styles.searchChip} href={`/seo-pages/${item.slug}`}>{ar ? item.ar : item.en}</Link>)}</div>
     </section>
 
-    <HomeToolSection locale={locale} eyebrow={ar ? 'اختيارات مميزة' : 'CURATED PICKS'} title={ar ? 'أدوات تستحق التجربة' : 'Tools worth trying'} tools={featured} />
-    <HomeToolSection locale={locale} eyebrow={ar ? 'إشارات الجودة' : 'QUALITY SIGNALS'} title={ar ? 'الأعلى تقييمًا' : 'Highest rated'} tools={rated} />
-    <HomeToolSection locale={locale} eyebrow={ar ? 'وصلت حديثًا' : 'JUST ADDED'} title={ar ? 'أحدث الأدوات' : 'Recently added'} tools={recent} />
-
-    {guides.length > 0 && <section className={`container ${styles.section}`}><div className={styles.sectionHead}><div><div className={styles.sectionKicker}>{ar ? 'المحرر' : 'EDITORIAL'}</div><h2 className={styles.sectionTitle}>{ar ? 'أحدث الأدلة' : 'Latest guides'}</h2></div><Link className="btn btn-secondary" href="/blog">{ar ? 'كل الأدلة' : 'All guides'} <ArrowRight size={15} /></Link></div><div className={styles.intentGrid}>{guides.map((guide) => <Link className={styles.intent} href={`/blog/${guide.slug}`} key={guide.slug}><div className={styles.intentIcon}><Search size={18} /></div><h3>{guide.title}</h3><p>{guide.excerpt}</p><span className={styles.intentArrow}>{ar ? 'اقرأ الدليل' : 'Read guide'} <ArrowRight size={13} /></span></Link>)}</div></section>}
-
     <section className={`container ${styles.section}`}>
-      <div className={styles.confidence}><div><div className={styles.kicker}>{ar ? 'اختيار أذكى' : 'A BETTER WAY TO CHOOSE'}</div><h2>{ar ? 'أقل ضوضاء.<br />قرارات أفضل.' : <>Less noise.<br />Better decisions.</>}</h2><p>{ar ? 'Eldevo يجمع البحث، المقارنة، التقييمات والمهام في تجربة واحدة واضحة بدل القوائم المكررة.' : 'Eldevo brings search, comparison, ratings and real-world tasks into one focused experience instead of another noisy list.'}</p><div className={styles.heroActions}><Link className="btn btn-primary" href="/ai-finder">{ar ? 'جرّب Eldevo' : 'Try Eldevo'} <ArrowRight size={15} /></Link></div></div><div className={styles.confidenceStats}><div className={styles.stat}><strong>01</strong><span>{ar ? 'ابدأ بمهمتك' : 'Start from your task'}</span></div><div className={styles.stat}><strong>02</strong><span>{ar ? 'قارن الخيارات' : 'Compare options'}</span></div><div className={styles.stat}><strong>03</strong><span>{ar ? 'اختر بثقة' : 'Choose with confidence'}</span></div><div className={styles.stat}><strong>AI</strong><span>{ar ? 'مساعدة ذكية' : 'Intelligent discovery'}</span></div></div></div>
+      <div className={styles.confidence}>
+        <div><div className={styles.sectionKicker}>{ar ? 'قرار أسرع، ضجيج أقل' : 'LESS NOISE. BETTER DECISIONS.'}</div><h2>{ar ? 'لا نعرض لك الأدوات فقط. نساعدك على اختيارها.' : 'Don’t just browse AI tools. Choose the right one.'}</h2><p>{ar ? 'Eldevo يجمع الاكتشاف والمقارنة والبحث حسب المهمة في تجربة واحدة، حتى تصل إلى الأداة المناسبة بأقل وقت.' : 'Eldevo brings discovery, comparison and task-based search into one focused experience, so you can reach the right tool faster.'}</p></div>
+        <div className={styles.confidenceStats}><div className={styles.stat}><strong>6</strong><span>{ar ? 'مجالات رئيسية' : 'Core categories'}</span></div><div className={styles.stat}><strong>AI</strong><span>{ar ? 'اكتشاف حسب المهمة' : 'Task-first discovery'}</span></div><div className={styles.stat}><strong>24/7</strong><span>{ar ? 'دليل مفتوح' : 'Open directory'}</span></div><div className={styles.stat}><strong>1</strong><span>{ar ? 'مكان لاتخاذ القرار' : 'Place to decide'}</span></div></div>
+      </div>
     </section>
+
+    <section className={`container ${styles.section}`} aria-labelledby="featured-heading"><HomeToolSection id="featured-heading" title={ar ? 'أدوات مميزة' : 'Featured tools'} tools={featured} locale={locale} /></section>
+    <section className={`container ${styles.section}`} aria-labelledby="rated-heading"><HomeToolSection id="rated-heading" title={ar ? 'الأعلى تقييمًا' : 'Top rated'} tools={rated} locale={locale} /></section>
+    <section className={`container ${styles.section}`} aria-labelledby="recent-heading"><HomeToolSection id="recent-heading" title={ar ? 'أضيفت حديثًا' : 'Recently added'} tools={recent} locale={locale} /></section>
+    {guides.length > 0 && <section className={`container ${styles.section}`} aria-labelledby="guides-heading"><div className={styles.sectionHead}><div><div className={styles.sectionKicker}>GUIDES</div><h2 id="guides-heading" className={styles.sectionTitle}>{ar ? 'دليل الاستخدام' : 'AI guides'}</h2></div></div><div className={styles.searchCloud}>{guides.map((guide) => <Link key={guide.slug} className={styles.searchChip} href={`/guides/${guide.slug}`}>{guide.title}</Link>)}</div></section>}
     <div className={styles.footerSpace} />
   </main>
 }
