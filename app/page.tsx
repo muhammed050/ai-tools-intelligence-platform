@@ -98,7 +98,7 @@ export default async function Home() {
     <section className={`container ${styles.section}`} aria-labelledby="featured-heading"><HomeToolSection id="featured-heading" title={ar ? 'أدوات مميزة' : 'Featured tools'} tools={featured} locale={locale} /></section>
     <section className={`container ${styles.section}`} aria-labelledby="rated-heading"><HomeToolSection id="rated-heading" title={ar ? 'الأعلى تقييمًا' : 'Top rated'} tools={rated} locale={locale} /></section>
     <section className={`container ${styles.section}`} aria-labelledby="recent-heading"><HomeToolSection id="recent-heading" title={ar ? 'أضيفت حديثًا' : 'Recently added'} tools={recent} locale={locale} /></section>
-    {guides.length > 0 && <section className={`container ${styles.section}`} aria-labelledby="guides-heading"><div className={styles.sectionHead}><div><div className={styles.sectionKicker}>GUIDES</div><h2 id="guides-heading" className={styles.sectionTitle}>{ar ? 'دليل الاستخدام' : 'AI guides'}</h2></div></div><div className={styles.searchCloud}>{guides.map((guide) => <Link key={guide.slug} className={styles.searchChip} href={`/guides/${guide.slug}`}>{guide.title}</Link>)}</div></section>}
+    {guides.length > 0 && <section className={`container ${styles.section}`} aria-labelledby="guides-heading"><div className={styles.sectionHead}><div><div className={styles.sectionKicker}>GUIDES</div><h2 id="guides-heading" className={styles.sectionTitle}>{ar ? 'دليل الاستخدام' : 'AI guides'}</h2></div></div><div className={styles.searchCloud}>{guides.map((guide) => <Link key={guide.slug} className={styles.searchChip} href={`/guides/${guide.slug}` as any}>{guide.title}</Link>)}</div></section>}
     <div className={styles.footerSpace} />
   </main>
 }
