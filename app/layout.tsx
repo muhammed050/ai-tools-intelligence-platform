@@ -12,6 +12,7 @@ import { LanguageSwitcher } from '@/components/language-switcher'
 import { ArabicAutoTranslate } from '@/components/arabic-auto-translate'
 import { getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/site'
 import { getDictionary, normalizeLocale, LOCALE_COOKIE, type Locale } from '@/lib/i18n'
+import { Analytics } from '@vercel/analytics/next'
 
 const siteUrl = getSiteUrl()
 
@@ -99,6 +100,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
         </footer>
         <ArabicAutoTranslate />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <Analytics />
       </body>
     </html>
   )
